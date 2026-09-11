@@ -1,1 +1,1 @@
-- [ ] Fix all current preview typecheck and build errors
+- [x] Fix all current preview typecheck and build errors
