@@ -88,7 +88,10 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pick
       is_listed: isListed,
     }).eq("id", profile.id);
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     onPickingChange(false);
     toast.success("Your freelancer profile is live.");
     onSaved();
