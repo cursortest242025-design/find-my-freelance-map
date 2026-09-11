@@ -32,7 +32,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
   async function fillLocationName(lat: number, lng: number) {
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&lat=${lat}&lng=${lng}&lon=${lng}`,
+        `https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&lat=${lat}&lon=${lng}`,
       );
       if (!response.ok) return;
       const data = (await response.json()) as { address?: Record<string, string> };
