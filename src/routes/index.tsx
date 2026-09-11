@@ -1,5 +1,5 @@
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BriefcaseBusiness, LocateFixed, LogOut, MapPin, Pencil, Search, Sparkles, X } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ function Index() {
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState("All");
   const [portfolio, setPortfolio] = useState<{ id: string; title: string; description: string; image_url: string }[]>([]);
+  const promptedSetup = useRef(false);
 
   const loadProfiles = useCallback(async () => {
     const [{ data: listed, error }, { data: auth }] = await Promise.all([
@@ -46,8 +47,17 @@ function Index() {
     setMe(auth.user);
     if (auth.user) {
       const { data } = await supabase.from("profiles").select("*").eq("id", auth.user.id).maybeSingle();
-      setMyProfile(data as MapProfile | null);
-    } else setMyProfile(null);
+      const mine = data as MapProfile | null;
+      setMyProfile(mine);
+      // Right after signing up, take the freelancer straight to their profile setup.
+      if (mine && !mine.is_listed && !promptedSetup.current) {
+        promptedSetup.current = true;
+        setEditing(true);
+      }
+    } else {
+      setMyProfile(null);
+      promptedSetup.current = false;
+    }
   }, []);
 
   useEffect(() => {
@@ -68,6 +78,12 @@ function Index() {
     return haystack.includes(query.toLowerCase()) && (activeTag === "All" || profile.tags.includes(activeTag));
   }), [activeTag, profiles, query]);
 
+  const pickedPoint = useMemo<[number, number] | undefined>(() => {
+    if (pickedLocation) return [pickedLocation.lat, pickedLocation.lng];
+    if (editing && myProfile?.latitude != null && myProfile.longitude != null) return [myProfile.latitude, myProfile.longitude];
+    return undefined;
+  }, [editing, myProfile, pickedLocation]);
+
   async function signIn() {
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin, extraParams: { prompt: "select_account" } });
     if (result.error) toast.error(result.error.message);
@@ -75,7 +91,20 @@ function Index() {
 
   async function signOut() {
     await supabase.auth.signOut();
-    setEditing(false); setSelected(null); setMe(null); setMyProfile(null);
+    setEditing(false); setPicking(false); setSelected(null); setMe(null); setMyProfile(null);
+    promptedSetup.current = false;
+  }
+
+  function startPicking() {
+    setSelected(null);
+    setEditing(false);
+    setPicking(true);
+  }
+
+  function finishPicking(lat: number, lng: number) {
+    setPickedLocation({ lat, lng });
+    setPicking(false);
+    setEditing(true);
   }
 
   return (
@@ -87,7 +116,7 @@ function Index() {
           {me && myProfile ? <><Button variant="map" onClick={() => setEditing(true)}><Pencil />My profile</Button><Button variant="ghost" size="icon" onClick={() => void signOut()} aria-label="Sign out"><LogOut /></Button></> : <Button variant="map" onClick={() => void signIn()}><Sparkles />Join the map</Button>}
         </div>
       </header>
-      <div className="map-layout">
+      <div className="map-layout" data-picking={picking}>
         <section className="directory" aria-label="Freelancer directory">
           <div className="directory-heading"><span className="eyebrow">Independent, everywhere</span><h1>Talent has no borders.</h1><p className="directory-count">{visible.length} {visible.length === 1 ? "freelancer" : "freelancers"} on the map</p></div>
           <div className="filter-row">{tags.map((tag) => <button type="button" className="filter-chip" data-active={activeTag === tag} key={tag} onClick={() => setActiveTag(tag)}>{tag}</button>)}</div>
@@ -101,14 +130,17 @@ function Index() {
           </div>
         </section>
         <section className="map-stage" aria-label="World map of freelancers">
-          {!profiles.length && <div className="map-empty">Be the first freelancer to appear here.</div>}
-          {picking && <div className="map-help"><LocateFixed size={16} /> Click your exact location on the map</div>}
-          <ClientOnly fallback={<div className="h-full w-full animate-pulse bg-muted" />}><Suspense fallback={<div className="h-full w-full animate-pulse bg-muted" />}><FreelancerMap profiles={visible} selectedId={selected?.id ?? null} onSelect={setSelected} pickLocation={picking ? (lat, lng) => { setPickedLocation({ lat, lng }); setPicking(false); } : undefined} /></Suspense></ClientOnly>
-          {selected && <aside className="detail-panel">
+          {!profiles.length && !picking && <div className="map-empty">Be the first freelancer to appear here.</div>}
+          {picking && <div className="map-help">
+            <span><LocateFixed size={16} /> Tap the map to drop your exact point</span>
+            <Button variant="secondary" size="sm" onClick={() => { setPicking(false); setEditing(true); }}>Cancel</Button>
+          </div>}
+          <ClientOnly fallback={<div className="h-full w-full animate-pulse bg-muted" />}><Suspense fallback={<div className="h-full w-full animate-pulse bg-muted" />}><FreelancerMap profiles={visible} selectedId={selected?.id ?? null} onSelect={setSelected} pickLocation={picking ? finishPicking : undefined} pickedPoint={pickedPoint} focusPoint={pickedPoint} /></Suspense></ClientOnly>
+          {selected && !picking && <aside className="detail-panel">
             <div className="detail-cover"><Button className="detail-close" variant="secondary" size="icon" onClick={() => setSelected(null)} aria-label="Close details"><X /></Button>{selected.avatar_url && <img className="detail-avatar" src={selected.avatar_url} alt={`${selected.full_name} profile`} />}</div>
             <div className="detail-body"><span className="eyebrow">{selected.is_available ? "Available for work" : "Currently booked"}</span><h2>{selected.full_name || `@${selected.username}`}</h2><p>{selected.headline}</p><div className="detail-meta"><span><MapPin size={14} />{selected.location_name || "Pinned location"}</span>{selected.starting_price != null && <span><BriefcaseBusiness size={14} />From {selected.currency} {selected.starting_price}</span>}</div><div className="tag-list">{[...selected.services, ...selected.tags].map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div><h3>About</h3><p>{selected.bio || "This freelancer is ready to collaborate."}</p>{portfolio.length > 0 && <><h3>Selected work</h3><div className="portfolio-grid">{portfolio.map((item) => <figure key={item.id}><img src={item.image_url} alt={item.title} loading="lazy" /><figcaption>{item.title}</figcaption></figure>)}</div></>}</div>
           </aside>}
-          {editing && myProfile && <ProfileEditor profile={myProfile} onClose={() => { setEditing(false); setPicking(false); }} onSaved={() => { setEditing(false); void loadProfiles(); }} onPickingChange={setPicking} pickedLocation={pickedLocation} />}
+          {editing && myProfile && <ProfileEditor profile={myProfile} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); void loadProfiles(); }} onPickOnMap={startPicking} onLocationFound={(lat, lng) => setPickedLocation({ lat, lng })} pickedLocation={pickedLocation} />}
         </section>
       </div>
     </main>

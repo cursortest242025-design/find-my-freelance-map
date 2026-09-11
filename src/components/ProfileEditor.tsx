@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Check, Crosshair, ImagePlus, MapPin, X } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { Check, Crosshair, ImagePlus, LocateFixed, MapPin, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,17 +13,63 @@ type EditorProps = {
   profile: MapProfile;
   onClose: () => void;
   onSaved: () => void;
-  onPickingChange: (active: boolean) => void;
+  onPickOnMap: () => void;
+  onLocationFound: (lat: number, lng: number) => void;
   pickedLocation: { lat: number; lng: number } | null;
 };
 
-export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pickedLocation }: EditorProps) {
+export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocationFound, pickedLocation }: EditorProps) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [projectTitle, setProjectTitle] = useState("");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "");
+  const [locationName, setLocationName] = useState(profile.location_name);
 
-  useEffect(() => () => onPickingChange(false), [onPickingChange]);
+  const latitude = pickedLocation?.lat ?? profile.latitude;
+  const longitude = pickedLocation?.lng ?? profile.longitude;
+
+  async function fillLocationName(lat: number, lng: number) {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&lat=${lat}&lon=${lng}`,
+      );
+      if (!response.ok) return;
+      const data = (await response.json()) as { address?: Record<string, string> };
+      const address = data.address ?? {};
+      const city = address['city'] || address['town'] || address['village'] || address['state'] || "";
+      const country = address['country'] || "";
+      const label = [city, country].filter(Boolean).join(", ");
+      if (label) setLocationName(label);
+    } catch {
+      /* keep whatever the user typed */
+    }
+  }
+
+  function useCurrentLocation() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      toast.error("Your device does not support location access.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        onLocationFound(position.coords.latitude, position.coords.longitude);
+        void fillLocationName(position.coords.latitude, position.coords.longitude);
+        toast.success("Location captured from your device.");
+      },
+      (error) => {
+        setLocating(false);
+        toast.error(
+          error.code === error.PERMISSION_DENIED
+            ? "Location permission denied. Allow it in your browser or pick your point manually."
+            : "Could not read your location. Try picking your point manually.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    );
+  }
 
   async function uploadAvatar(file: File) {
     setUploading(true);
@@ -63,11 +109,9 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pick
     const tags = String(form.get("tags") ?? "").split(",").map((tag) => tag.trim()).filter(Boolean);
     const services = String(form.get("services") ?? "").split(",").map((item) => item.trim()).filter(Boolean);
     const priceText = String(form.get("price") ?? "").trim();
-    const latitude = pickedLocation?.lat ?? profile.latitude;
-    const longitude = pickedLocation?.lng ?? profile.longitude;
     const isListed = form.get("listed") === "on";
     if (isListed && (latitude == null || longitude == null)) {
-      toast.error("Choose your location on the map before going live.");
+      toast.error("Set your location before going live.");
       return;
     }
     setSaving(true);
@@ -76,7 +120,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pick
       full_name: String(form.get("fullName") ?? "").trim(),
       headline: String(form.get("headline") ?? "").trim(),
       bio: String(form.get("bio") ?? "").trim(),
-      location_name: String(form.get("locationName") ?? "").trim(),
+      location_name: locationName.trim(),
       latitude,
       longitude,
       tags,
@@ -92,7 +136,6 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pick
       toast.error(error.message);
       return;
     }
-    onPickingChange(false);
     toast.success("Your freelancer profile is live.");
     onSaved();
   }
@@ -116,8 +159,17 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pick
         <div><Label htmlFor="services">Services</Label><Input id="services" name="services" defaultValue={profile.services.join(", ")} placeholder="Brand identity, Web design, Art direction" /><p className="field-help">Separate services with commas.</p></div>
         <div><Label htmlFor="tags">Skills & tools</Label><Input id="tags" name="tags" defaultValue={profile.tags.join(", ")} placeholder="Figma, Illustration, Framer" /></div>
         <div className="field-grid"><div><Label htmlFor="price">Starting price</Label><Input id="price" name="price" type="number" min="0" step="1" defaultValue={profile.starting_price ?? ""} placeholder="Optional" /></div><div><Label htmlFor="currency">Currency</Label><Input id="currency" name="currency" maxLength={3} defaultValue={profile.currency} /></div></div>
-        <div><Label htmlFor="locationName">Location label</Label><Input id="locationName" name="locationName" defaultValue={profile.location_name} placeholder="Lisbon, Portugal" /></div>
-        <Button type="button" variant="outline" className="w-full" onClick={() => onPickingChange(true)}><Crosshair />{pickedLocation ? `${pickedLocation.lat.toFixed(4)}, ${pickedLocation.lng.toFixed(4)}` : profile.latitude != null ? "Change exact map point" : "Choose exact point on map"}</Button>
+        <div className="location-block">
+          <Label htmlFor="locationName">Where you are</Label>
+          <Input id="locationName" value={locationName} onChange={(event) => setLocationName(event.target.value)} placeholder="Lisbon, Portugal" />
+          <div className="location-choices">
+            <Button type="button" variant="outline" disabled={locating} onClick={useCurrentLocation}><LocateFixed />{locating ? "Locating..." : "Use my current location"}</Button>
+            <Button type="button" variant="outline" onClick={onPickOnMap}><Crosshair />Manually pick on map</Button>
+          </div>
+          <p className="field-help" data-set={latitude != null}>
+            {latitude != null && longitude != null ? `Pinned at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}` : "No point set yet."}
+          </p>
+        </div>
         <div className="privacy-note"><MapPin /><p>Your exact map point will be visible publicly when your profile is listed.</p></div>
         <div className="toggle-row"><div><Label htmlFor="available">Available for work</Label><p>Show clients you can take new projects.</p></div><Switch id="available" name="available" defaultChecked={profile.is_available} /></div>
         <div className="toggle-row"><div><Label htmlFor="listed">List me on the map</Label><p>Make your profile discoverable to everyone.</p></div><Switch id="listed" name="listed" defaultChecked={profile.is_listed} /></div>
