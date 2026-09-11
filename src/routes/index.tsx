@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { BriefcaseBusiness, LocateFixed, LogOut, MapPin, Pencil, Search, Sparkles, X } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
@@ -97,7 +97,7 @@ function Index() {
         <section className="map-stage" aria-label="World map of freelancers">
           {!profiles.length && <div className="map-empty">Be the first freelancer to appear here.</div>}
           {picking && <div className="map-help"><LocateFixed size={16} /> Click your exact location on the map</div>}
-          <Suspense fallback={<div className="h-full w-full animate-pulse bg-muted" />}><FreelancerMap profiles={visible} selectedId={selected?.id ?? null} onSelect={setSelected} pickLocation={picking ? (lat, lng) => { setPickedLocation({ lat, lng }); setPicking(false); } : undefined} /></Suspense>
+          <ClientOnly fallback={<div className="h-full w-full animate-pulse bg-muted" />}><Suspense fallback={<div className="h-full w-full animate-pulse bg-muted" />}><FreelancerMap profiles={visible} selectedId={selected?.id ?? null} onSelect={setSelected} pickLocation={picking ? (lat, lng) => { setPickedLocation({ lat, lng }); setPicking(false); } : undefined} /></Suspense></ClientOnly>
           {selected && <aside className="detail-panel">
             <div className="detail-cover"><Button className="detail-close" variant="secondary" size="icon" onClick={() => setSelected(null)} aria-label="Close details"><X /></Button>{selected.avatar_url && <img className="detail-avatar" src={selected.avatar_url} alt={`${selected.full_name} profile`} />}</div>
             <div className="detail-body"><span className="eyebrow">{selected.is_available ? "Available for work" : "Currently booked"}</span><h2>{selected.full_name || `@${selected.username}`}</h2><p>{selected.headline}</p><div className="detail-meta"><span><MapPin size={14} />{selected.location_name || "Pinned location"}</span>{selected.starting_price != null && <span><BriefcaseBusiness size={14} />From {selected.currency} {selected.starting_price}</span>}</div><div className="tag-list">{[...selected.services, ...selected.tags].map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div><h3>About</h3><p>{(selected as MapProfile & { bio?: string }).bio || "This freelancer is ready to collaborate. Sign in and create your own profile to join the community."}</p></div>
