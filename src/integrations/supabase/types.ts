@@ -14,7 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      portfolio_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          image_url: string
+          profile_id: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          image_url: string
+          profile_id: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          image_url?: string
+          profile_id?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_items_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string
+          created_at: string
+          currency: string
+          full_name: string
+          headline: string
+          id: string
+          is_available: boolean
+          is_listed: boolean
+          latitude: number | null
+          location_name: string
+          longitude: number | null
+          services: string[]
+          starting_price: number | null
+          tags: string[]
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string
+          created_at?: string
+          currency?: string
+          full_name?: string
+          headline?: string
+          id: string
+          is_available?: boolean
+          is_listed?: boolean
+          latitude?: number | null
+          location_name?: string
+          longitude?: number | null
+          services?: string[]
+          starting_price?: number | null
+          tags?: string[]
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string
+          created_at?: string
+          currency?: string
+          full_name?: string
+          headline?: string
+          id?: string
+          is_available?: boolean
+          is_listed?: boolean
+          latitude?: number | null
+          location_name?: string
+          longitude?: number | null
+          services?: string[]
+          starting_price?: number | null
+          tags?: string[]
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
