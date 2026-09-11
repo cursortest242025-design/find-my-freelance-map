@@ -18,6 +18,7 @@ export type MapProfile = {
   starting_price: number | null;
   currency: string;
   is_available: boolean;
+  is_listed: boolean;
 };
 
 const markerIcon = L.divIcon({
@@ -36,7 +37,7 @@ const selectedIcon = L.divIcon({
   popupAnchor: [0, -24],
 });
 
-function LocationPicker({ onPick }: { onPick?: (lat: number, lng: number) => void }) {
+function LocationPicker({ onPick }: { onPick: ((lat: number, lng: number) => void) | undefined }) {
   useMapEvents({
     click(event) {
       onPick?.(event.latlng.lat, event.latlng.lng);
@@ -51,7 +52,8 @@ function FitToProfiles({ profiles }: { profiles: MapProfile[] }) {
     const points = profiles
       .filter((profile) => profile.latitude != null && profile.longitude != null)
       .map((profile) => [profile.latitude as number, profile.longitude as number] as [number, number]);
-    if (points.length === 1) map.setView(points[0], 9);
+    const firstPoint = points[0];
+    if (points.length === 1 && firstPoint) map.setView(firstPoint, 9);
     if (points.length > 1) map.fitBounds(points, { padding: [70, 70], maxZoom: 11 });
   }, [map, profiles]);
   return null;
@@ -66,7 +68,7 @@ export function FreelancerMap({
   profiles: MapProfile[];
   selectedId: string | null;
   onSelect: (profile: MapProfile) => void;
-  pickLocation?: (lat: number, lng: number) => void;
+  pickLocation: ((lat: number, lng: number) => void) | undefined;
 }) {
   return (
     <MapContainer center={[20, 0]} zoom={2.4} minZoom={2} className="h-full w-full" zoomControl={false}>

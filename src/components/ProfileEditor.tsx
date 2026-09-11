@@ -41,18 +41,18 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pick
     setUploading(false);
   }
 
-  async function uploadProject(file: File) {
-    if (!projectTitle.trim()) return toast.error("Add a project title first.");
+  async function uploadProject(file: File): Promise<void> {
+    if (!projectTitle.trim()) { toast.error("Add a project title first."); return; }
     setUploading(true);
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const path = `${profile.id}/work-${Date.now()}.${extension}`;
     const upload = await supabase.storage.from("freelancer-media").upload(path, file);
-    if (upload.error) { setUploading(false); return toast.error(upload.error.message); }
+    if (upload.error) { setUploading(false); toast.error(upload.error.message); return; }
     const signed = await supabase.storage.from("freelancer-media").createSignedUrl(path, 31536000);
-    if (signed.error) { setUploading(false); return toast.error(signed.error.message); }
+    if (signed.error) { setUploading(false); toast.error(signed.error.message); return; }
     const created = await supabase.from("portfolio_items").insert({ profile_id: profile.id, title: projectTitle.trim(), image_url: signed.data.signedUrl });
     setUploading(false);
-    if (created.error) return toast.error(created.error.message);
+    if (created.error) { toast.error(created.error.message); return; }
     setProjectTitle("");
     toast.success("Portfolio project added.");
   }
