@@ -20,6 +20,7 @@ type EditorProps = {
 export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pickedLocation }: EditorProps) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [projectTitle, setProjectTitle] = useState("");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "");
 
   useEffect(() => () => onPickingChange(false), [onPickingChange]);
@@ -38,6 +39,22 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pick
     if (signed.error) toast.error(signed.error.message);
     else setAvatarUrl(signed.data.signedUrl);
     setUploading(false);
+  }
+
+  async function uploadProject(file: File) {
+    if (!projectTitle.trim()) return toast.error("Add a project title first.");
+    setUploading(true);
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${profile.id}/work-${Date.now()}.${extension}`;
+    const upload = await supabase.storage.from("freelancer-media").upload(path, file);
+    if (upload.error) { setUploading(false); return toast.error(upload.error.message); }
+    const signed = await supabase.storage.from("freelancer-media").createSignedUrl(path, 31536000);
+    if (signed.error) { setUploading(false); return toast.error(signed.error.message); }
+    const created = await supabase.from("portfolio_items").insert({ profile_id: profile.id, title: projectTitle.trim(), image_url: signed.data.signedUrl });
+    setUploading(false);
+    if (created.error) return toast.error(created.error.message);
+    setProjectTitle("");
+    toast.success("Portfolio project added.");
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -92,7 +109,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pick
         </div>
         <div className="field-grid"><div><Label htmlFor="fullName">Name</Label><Input id="fullName" name="fullName" defaultValue={profile.full_name} required /></div><div><Label htmlFor="username">Username</Label><Input id="username" name="username" defaultValue={profile.username} required /></div></div>
         <div><Label htmlFor="headline">Professional headline</Label><Input id="headline" name="headline" defaultValue={profile.headline} placeholder="Brand designer & creative director" /></div>
-        <div><Label htmlFor="bio">About your work</Label><Textarea id="bio" name="bio" defaultValue={(profile as MapProfile & { bio?: string }).bio ?? ""} placeholder="Tell clients what you do best..." rows={4} /></div>
+        <div><Label htmlFor="bio">About your work</Label><Textarea id="bio" name="bio" defaultValue={profile.bio} placeholder="Tell clients what you do best..." rows={4} /></div>
         <div><Label htmlFor="services">Services</Label><Input id="services" name="services" defaultValue={profile.services.join(", ")} placeholder="Brand identity, Web design, Art direction" /><p className="field-help">Separate services with commas.</p></div>
         <div><Label htmlFor="tags">Skills & tools</Label><Input id="tags" name="tags" defaultValue={profile.tags.join(", ")} placeholder="Figma, Illustration, Framer" /></div>
         <div className="field-grid"><div><Label htmlFor="price">Starting price</Label><Input id="price" name="price" type="number" min="0" step="1" defaultValue={profile.starting_price ?? ""} placeholder="Optional" /></div><div><Label htmlFor="currency">Currency</Label><Input id="currency" name="currency" maxLength={3} defaultValue={profile.currency} /></div></div>
@@ -101,6 +118,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickingChange, pick
         <div className="privacy-note"><MapPin /><p>Your exact map point will be visible publicly when your profile is listed.</p></div>
         <div className="toggle-row"><div><Label htmlFor="available">Available for work</Label><p>Show clients you can take new projects.</p></div><Switch id="available" name="available" defaultChecked={profile.is_available} /></div>
         <div className="toggle-row"><div><Label htmlFor="listed">List me on the map</Label><p>Make your profile discoverable to everyone.</p></div><Switch id="listed" name="listed" defaultChecked={profile.is_listed} /></div>
+        <div className="portfolio-upload"><div><Label htmlFor="projectTitle">Portfolio project</Label><Input id="projectTitle" value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="Project title" /></div><div><Label htmlFor="projectImage">Demo image</Label><Input id="projectImage" type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProject(file); }} /></div></div>
         <Button type="submit" size="lg" disabled={saving || uploading}><Check />{saving ? "Saving..." : "Save profile"}</Button>
       </form>
     </aside>

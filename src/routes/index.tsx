@@ -34,10 +34,11 @@ function Index() {
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState("All");
+  const [portfolio, setPortfolio] = useState<{ id: string; title: string; description: string; image_url: string }[]>([]);
 
   const loadProfiles = useCallback(async () => {
     const [{ data: listed, error }, { data: auth }] = await Promise.all([
-      supabase.from("profiles").select("id,username,full_name,headline,avatar_url,latitude,longitude,location_name,tags,services,starting_price,currency,is_available").eq("is_listed", true),
+      supabase.from("profiles").select("id,username,full_name,headline,bio,avatar_url,latitude,longitude,location_name,tags,services,starting_price,currency,is_available").eq("is_listed", true),
       supabase.auth.getUser(),
     ]);
     if (error) toast.error("Could not load the freelancer map.");
@@ -55,6 +56,11 @@ function Index() {
     const { data } = supabase.auth.onAuthStateChange((event) => { if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") void loadProfiles(); });
     return () => { void supabase.removeChannel(channel); data.subscription.unsubscribe(); };
   }, [loadProfiles]);
+
+  useEffect(() => {
+    if (!selected) { setPortfolio([]); return; }
+    void supabase.from("portfolio_items").select("id,title,description,image_url").eq("profile_id", selected.id).order("sort_order").then(({ data }) => setPortfolio(data ?? []));
+  }, [selected]);
 
   const tags = useMemo(() => ["All", ...Array.from(new Set(profiles.flatMap((profile) => profile.tags))).slice(0, 5)], [profiles]);
   const visible = useMemo(() => profiles.filter((profile) => {
@@ -100,7 +106,7 @@ function Index() {
           <ClientOnly fallback={<div className="h-full w-full animate-pulse bg-muted" />}><Suspense fallback={<div className="h-full w-full animate-pulse bg-muted" />}><FreelancerMap profiles={visible} selectedId={selected?.id ?? null} onSelect={setSelected} pickLocation={picking ? (lat, lng) => { setPickedLocation({ lat, lng }); setPicking(false); } : undefined} /></Suspense></ClientOnly>
           {selected && <aside className="detail-panel">
             <div className="detail-cover"><Button className="detail-close" variant="secondary" size="icon" onClick={() => setSelected(null)} aria-label="Close details"><X /></Button>{selected.avatar_url && <img className="detail-avatar" src={selected.avatar_url} alt={`${selected.full_name} profile`} />}</div>
-            <div className="detail-body"><span className="eyebrow">{selected.is_available ? "Available for work" : "Currently booked"}</span><h2>{selected.full_name || `@${selected.username}`}</h2><p>{selected.headline}</p><div className="detail-meta"><span><MapPin size={14} />{selected.location_name || "Pinned location"}</span>{selected.starting_price != null && <span><BriefcaseBusiness size={14} />From {selected.currency} {selected.starting_price}</span>}</div><div className="tag-list">{[...selected.services, ...selected.tags].map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div><h3>About</h3><p>{(selected as MapProfile & { bio?: string }).bio || "This freelancer is ready to collaborate. Sign in and create your own profile to join the community."}</p></div>
+            <div className="detail-body"><span className="eyebrow">{selected.is_available ? "Available for work" : "Currently booked"}</span><h2>{selected.full_name || `@${selected.username}`}</h2><p>{selected.headline}</p><div className="detail-meta"><span><MapPin size={14} />{selected.location_name || "Pinned location"}</span>{selected.starting_price != null && <span><BriefcaseBusiness size={14} />From {selected.currency} {selected.starting_price}</span>}</div><div className="tag-list">{[...selected.services, ...selected.tags].map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div><h3>About</h3><p>{selected.bio || "This freelancer is ready to collaborate."}</p>{portfolio.length > 0 && <><h3>Selected work</h3><div className="portfolio-grid">{portfolio.map((item) => <figure key={item.id}><img src={item.image_url} alt={item.title} loading="lazy" /><figcaption>{item.title}</figcaption></figure>)}</div></>}</div>
           </aside>}
           {editing && myProfile && <ProfileEditor profile={myProfile} onClose={() => { setEditing(false); setPicking(false); }} onSaved={() => { setEditing(false); void loadProfiles(); }} onPickingChange={setPicking} pickedLocation={pickedLocation} />}
         </section>

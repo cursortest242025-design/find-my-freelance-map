@@ -8,6 +8,7 @@ export type MapProfile = {
   username: string;
   full_name: string;
   headline: string;
+  bio: string;
   avatar_url: string | null;
   latitude: number | null;
   longitude: number | null;
