@@ -33,7 +33,6 @@ function Index() {
   const [picking, setPicking] = useState(false);
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [query, setQuery] = useState("");
-  const [activeTag, setActiveTag] = useState("All");
   const [portfolio, setPortfolio] = useState<{ id: string; title: string; description: string; image_url: string }[]>([]);
   const promptedSetup = useRef(false);
 
@@ -72,11 +71,10 @@ function Index() {
     void supabase.from("portfolio_items").select("id,title,description,image_url").eq("profile_id", selected.id).order("sort_order").then(({ data }) => setPortfolio(data ?? []));
   }, [selected]);
 
-  const tags = useMemo(() => ["All", ...Array.from(new Set(profiles.flatMap((profile) => profile.tags))).slice(0, 5)], [profiles]);
   const visible = useMemo(() => profiles.filter((profile) => {
     const haystack = [profile.full_name, profile.username, profile.headline, profile.location_name, ...profile.tags, ...profile.services].join(" ").toLowerCase();
-    return haystack.includes(query.toLowerCase()) && (activeTag === "All" || profile.tags.includes(activeTag));
-  }), [activeTag, profiles, query]);
+    return haystack.includes(query.toLowerCase());
+  }), [profiles, query]);
 
   const pickedPoint = useMemo<[number, number] | undefined>(() => {
     if (pickedLocation) return [pickedLocation.lat, pickedLocation.lng];
@@ -111,26 +109,14 @@ function Index() {
     <main className="app-shell">
       <header className="topbar">
         <div className="brand"><span className="brand-mark">A</span>Atlaswork</div>
-        <div className="search-wrap"><Search size={17} /><Input aria-label="Search freelancers" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search skills, services or places" /></div>
+        <div className="search-wrap"><Search className="search-icon" size={17} aria-hidden="true" /><Input className="search-input" aria-label="Search freelancers" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by skill, name or place" /></div>
         <div className="topbar-actions">
           {me && myProfile ? <><Button variant="map" onClick={() => setEditing(true)}><Pencil />My profile</Button><Button variant="ghost" size="icon" onClick={() => void signOut()} aria-label="Sign out"><LogOut /></Button></> : <Button variant="map" onClick={() => void signIn()}><Sparkles />Join the map</Button>}
         </div>
       </header>
       <div className="map-layout" data-picking={picking}>
-        <section className="directory" aria-label="Freelancer directory">
-          <div className="directory-heading"><span className="eyebrow">Independent, everywhere</span><h1>Talent has no borders.</h1><p className="directory-count">{visible.length} {visible.length === 1 ? "freelancer" : "freelancers"} on the map</p></div>
-          <div className="filter-row">{tags.map((tag) => <button type="button" className="filter-chip" data-active={activeTag === tag} key={tag} onClick={() => setActiveTag(tag)}>{tag}</button>)}</div>
-          <div className="profile-list">
-            {visible.map((profile) => <button type="button" className="profile-item" data-active={selected?.id === profile.id} key={profile.id} onClick={() => setSelected(profile)}>
-              {profile.avatar_url ? <img className="profile-avatar" src={profile.avatar_url} alt="" /> : <span className="profile-avatar">{(profile.full_name || profile.username).slice(0, 1).toUpperCase()}</span>}
-              <span className="profile-copy"><strong>{profile.full_name || `@${profile.username}`}</strong><span>{profile.headline || profile.services[0] || "Independent freelancer"}</span><span>{profile.location_name || "Location pinned"}</span></span>
-              {profile.is_available && <span className="available-dot" title="Available for work" />}
-            </button>)}
-            {!visible.length && <div className="p-8 text-center text-sm text-muted-foreground">No matching people yet.</div>}
-          </div>
-        </section>
         <section className="map-stage" aria-label="World map of freelancers">
-          {!profiles.length && !picking && <div className="map-empty">Be the first freelancer to appear here.</div>}
+          {!visible.length && !picking && <div className="map-empty">{profiles.length ? "No freelancers match this search." : "Be the first freelancer to appear here."}</div>}
           {picking && <div className="map-help">
             <span><LocateFixed size={16} /> Tap the map to drop your exact point</span>
             <Button variant="secondary" size="sm" onClick={() => { setPicking(false); setEditing(true); }}>Cancel</Button>
