@@ -158,7 +158,7 @@
   .brand-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--color-primary); color: var(--color-primary-foreground); font-family: var(--font-sans); font-size: 12px; font-weight: 800; box-shadow: 0 7px 16px color-mix(in oklch, var(--color-primary) 24%, transparent); }
   .search-wrap { width: min(460px, 46vw); position: relative; isolation: isolate; }
   .search-wrap .search-icon { position: absolute; z-index: 2; left: 14px; top: 50%; translate: 0 -50%; color: var(--color-muted-foreground); pointer-events: none; }
-  .search-wrap .search-input { height: 42px; padding-left: 44px; padding-right: 16px; border-color: transparent; border-radius: 12px; background: var(--color-muted); box-shadow: none; }
+  .search-wrap .search-input { height: 42px; padding-left: 44px !important; padding-right: 16px; border-color: transparent; border-radius: 12px; background: var(--color-muted); box-shadow: none; }
   .search-wrap .search-input:focus-visible { background: var(--color-card); border-color: var(--color-ring); box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-ring) 13%, transparent); }
   .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
   .map-layout { height: calc(100dvh - 72px); }
