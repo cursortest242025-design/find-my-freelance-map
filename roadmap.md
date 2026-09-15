@@ -1,1 +1,5 @@
 - [x] Fix all current preview typecheck and build errors
+- [x] Make freelancer pins open profile details directly
+- [x] Fix top search icon and text spacing
+- [x] Remove the freelancer directory and make the map full-width
+- [x] Apply the selected Atlaswork Social Map styling and people pins

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -31,13 +31,12 @@ function buildIcon(profile: MapProfile, size: number, selected: boolean) {
   const initial = escapeHtml((profile.full_name || profile.username || "?").slice(0, 1).toUpperCase());
   const face = profile.avatar_url
     ? `<img src="${escapeHtml(profile.avatar_url)}" alt="" />`
-    : `<span class="pin3d-initial">${initial}</span>`;
+    : `<span class="pin3d-person" aria-hidden="true"><span class="pin3d-head"></span><span class="pin3d-shoulders"></span><span class="pin3d-initial">${initial}</span></span>`;
   return L.divIcon({
     className: `pin3d${selected ? " pin3d-selected" : ""}${profile.is_available ? " pin3d-available" : ""}`,
-    html: `<span class="pin3d-body" style="--pin-size:${size}px"><span class="pin3d-face">${face}</span></span><span class="pin3d-shadow"></span>`,
-    iconSize: [size, size * 1.35],
-    iconAnchor: [size / 2, size * 1.35],
-    popupAnchor: [0, -size * 1.3],
+    html: `<span class="pin3d-body" style="--pin-size:${size}px"><span class="pin3d-face">${face}</span><span class="pin3d-status"></span></span><span class="pin3d-tail"></span><span class="pin3d-shadow"></span>`,
+    iconSize: [size, size * 1.42],
+    iconAnchor: [size / 2, size * 1.42],
   });
 }
 
@@ -91,15 +90,17 @@ function Markers({
             key={profile.id}
             position={[profile.latitude, profile.longitude]}
             icon={buildIcon(profile, profile.id === selectedId ? Math.round(size * 1.18) : size, profile.id === selectedId)}
-            eventHandlers={{ click: () => onSelect(profile) }}
-          >
-            <Popup>
-              <button className="map-popup" type="button" onClick={() => onSelect(profile)}>
-                <strong>{profile.full_name || `@${profile.username}`}</strong>
-                <span>{profile.headline || profile.services[0] || "Independent freelancer"}</span>
-              </button>
-            </Popup>
-          </Marker>
+            eventHandlers={{
+              click: (event) => {
+                event.originalEvent.stopPropagation();
+                map.closePopup();
+                onSelect(profile);
+              },
+            }}
+            riseOnHover
+            riseOffset={800}
+            title={`Open ${profile.full_name || profile.username}'s profile`}
+          />
         ) : null,
       )}
     </>
@@ -111,7 +112,7 @@ function PickedMarker({ point }: { point: [number, number] }) {
     () =>
       L.divIcon({
         className: "pin3d pin3d-picked",
-        html: '<span class="pin3d-body" style="--pin-size:38px"><span class="pin3d-face"><span class="pin3d-initial">★</span></span></span><span class="pin3d-shadow"></span>',
+        html: '<span class="pin3d-body" style="--pin-size:38px"><span class="pin3d-face"><span class="pin3d-person"><span class="pin3d-head"></span><span class="pin3d-shoulders"></span></span></span></span><span class="pin3d-tail"></span><span class="pin3d-shadow"></span>',
         iconSize: [38, 51],
         iconAnchor: [19, 51],
       }),
