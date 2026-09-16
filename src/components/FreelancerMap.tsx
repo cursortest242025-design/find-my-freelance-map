@@ -19,6 +19,15 @@ export type MapProfile = {
   currency: string;
   is_available: boolean;
   is_listed: boolean;
+  contact_email: string;
+  linkedin_url: string;
+  instagram_url: string;
+  whatsapp_number: string;
+  telegram_id: string;
+  address: string;
+  show_address: boolean;
+  github_repos: string[];
+  country: string;
 };
 
 function escapeHtml(value: string) {
@@ -52,20 +61,23 @@ function LocationPicker({ onPick }: { onPick: ((lat: number, lng: number) => voi
   return null;
 }
 
+export type ViewTarget = { center: [number, number]; zoom: number; key: string };
+
 function FitToProfiles({ profiles, focus }: { profiles: MapProfile[]; focus: [number, number] | undefined }) {
   const map = useMap();
   useEffect(() => {
-    if (focus) {
-      map.setView(focus, Math.max(map.getZoom(), 12));
-      return;
-    }
-    const points = profiles
-      .filter((profile) => profile.latitude != null && profile.longitude != null)
-      .map((profile) => [profile.latitude as number, profile.longitude as number] as [number, number]);
-    const firstPoint = points[0];
-    if (points.length === 1 && firstPoint) map.setView(firstPoint, 9);
-    if (points.length > 1) map.fitBounds(points, { padding: [70, 70], maxZoom: 11 });
+    if (!focus) return;
+    map.setView(focus, Math.max(map.getZoom(), 12));
   }, [map, profiles, focus]);
+  return null;
+}
+
+function ViewController({ target }: { target: ViewTarget | undefined }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!target) return;
+    map.flyTo(target.center, target.zoom, { duration: 1.1 });
+  }, [map, target?.key]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 }
 
@@ -131,6 +143,7 @@ export function FreelancerMap({
   pickLocation,
   pickedPoint,
   focusPoint,
+  viewTarget,
 }: {
   profiles: MapProfile[];
   selectedId: string | null;
@@ -138,6 +151,7 @@ export function FreelancerMap({
   pickLocation: ((lat: number, lng: number) => void) | undefined;
   pickedPoint?: [number, number] | undefined;
   focusPoint?: [number, number] | undefined;
+  viewTarget?: ViewTarget | undefined;
 }) {
   return (
     <MapContainer
@@ -148,14 +162,15 @@ export function FreelancerMap({
       wheelPxPerZoomLevel={110}
       zoomSnap={0}
       zoomDelta={0.6}
-      className="h-full w-full"
+      className="h-full w-full atlas-map"
       zoomControl={false}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         maxZoom={19}
       />
+      <ViewController target={viewTarget} />
       <FitToProfiles profiles={profiles} focus={focusPoint} />
       <LocationPicker onPick={pickLocation} />
       <Markers profiles={profiles} selectedId={selectedId} onSelect={onSelect} />
