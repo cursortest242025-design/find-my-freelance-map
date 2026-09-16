@@ -222,8 +222,11 @@
   .pin3d-selected .pin3d-tail, .pin3d-picked .pin3d-tail { border-top-color: var(--color-map-action); }
 
   .map-popup { border: 0; background: transparent; text-align: left; cursor: pointer; min-width: 160px; } .map-popup strong, .map-popup span { display: block; } .map-popup span { color: var(--color-muted-foreground); margin-top: 3px; }
-  .leaflet-container { font-family: var(--font-sans); background: oklch(0.9 0.02 235); } .leaflet-control-attribution { font-size: 9px; }
-  .atlas-map .leaflet-tile-pane { filter: saturate(0.72) hue-rotate(-12deg) brightness(1.05) contrast(0.94); }
+  .maplibregl-map { font-family: var(--font-sans); background: oklch(0.16 0.04 260); }
+  .maplibregl-ctrl-attrib { font-size: 9px; }
+  .maplibregl-ctrl-group { border-radius: 12px !important; overflow: hidden; box-shadow: 0 12px 26px oklch(0.2 0.04 255 / 16%) !important; }
+  .atlas-map canvas { outline: none; }
+  .maplibregl-marker { will-change: transform; }
 
   /* Country filter inside the search bar */
   .search-wrap { display: flex; align-items: center; }
@@ -236,7 +239,7 @@
   .pick-reticle::before, .pick-reticle::after { content: ""; position: absolute; left: 50%; top: 50%; background: color-mix(in oklch, var(--color-primary) 60%, transparent); }
   .pick-reticle::before { width: 30px; height: 2px; translate: -50% -50%; }
   .pick-reticle::after { width: 2px; height: 30px; translate: -50% -50%; }
-  .map-layout[data-picking="true"] .leaflet-container { cursor: crosshair; }
+  .map-layout[data-picking="true"] .maplibregl-canvas { cursor: crosshair; }
 
   /* Details additions */
   .detail-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
