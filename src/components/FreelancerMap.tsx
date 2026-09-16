@@ -61,20 +61,23 @@ function LocationPicker({ onPick }: { onPick: ((lat: number, lng: number) => voi
   return null;
 }
 
+export type ViewTarget = { center: [number, number]; zoom: number; key: string };
+
 function FitToProfiles({ profiles, focus }: { profiles: MapProfile[]; focus: [number, number] | undefined }) {
   const map = useMap();
   useEffect(() => {
-    if (focus) {
-      map.setView(focus, Math.max(map.getZoom(), 12));
-      return;
-    }
-    const points = profiles
-      .filter((profile) => profile.latitude != null && profile.longitude != null)
-      .map((profile) => [profile.latitude as number, profile.longitude as number] as [number, number]);
-    const firstPoint = points[0];
-    if (points.length === 1 && firstPoint) map.setView(firstPoint, 9);
-    if (points.length > 1) map.fitBounds(points, { padding: [70, 70], maxZoom: 11 });
+    if (!focus) return;
+    map.setView(focus, Math.max(map.getZoom(), 12));
   }, [map, profiles, focus]);
+  return null;
+}
+
+function ViewController({ target }: { target: ViewTarget | undefined }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!target) return;
+    map.flyTo(target.center, target.zoom, { duration: 1.1 });
+  }, [map, target?.key]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 }
 
