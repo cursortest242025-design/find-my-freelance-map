@@ -223,7 +223,7 @@
 
   .map-popup { border: 0; background: transparent; text-align: left; cursor: pointer; min-width: 160px; } .map-popup strong, .map-popup span { display: block; } .map-popup span { color: var(--color-muted-foreground); margin-top: 3px; }
   .leaflet-container { font-family: var(--font-sans); background: oklch(0.9 0.02 235); } .leaflet-control-attribution { font-size: 9px; }
-  .atlas-map .leaflet-tile-pane { filter: saturate(0.88) hue-rotate(-6deg) brightness(1.02); }
+  .atlas-map .leaflet-tile-pane { filter: saturate(0.72) hue-rotate(-12deg) brightness(1.05) contrast(0.94); }
 
   /* Country filter inside the search bar */
   .search-wrap { display: flex; align-items: center; }
