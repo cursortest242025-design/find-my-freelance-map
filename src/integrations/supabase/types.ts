@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      favorites: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portfolio_items: {
         Row: {
           created_at: string
@@ -55,63 +84,157 @@ export type Database = {
           },
         ]
       }
+      profile_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_comments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          user_id: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_id?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_reactions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          address: string
           avatar_url: string | null
           bio: string
+          contact_email: string
+          country: string
           created_at: string
           currency: string
           full_name: string
+          github_repos: string[]
           headline: string
           id: string
+          instagram_url: string
           is_available: boolean
           is_listed: boolean
           latitude: number | null
+          linkedin_url: string
           location_name: string
           longitude: number | null
           services: string[]
+          show_address: boolean
           starting_price: number | null
           tags: string[]
+          telegram_id: string
           updated_at: string
           username: string
+          whatsapp_number: string
         }
         Insert: {
+          address?: string
           avatar_url?: string | null
           bio?: string
+          contact_email?: string
+          country?: string
           created_at?: string
           currency?: string
           full_name?: string
+          github_repos?: string[]
           headline?: string
           id: string
+          instagram_url?: string
           is_available?: boolean
           is_listed?: boolean
           latitude?: number | null
+          linkedin_url?: string
           location_name?: string
           longitude?: number | null
           services?: string[]
+          show_address?: boolean
           starting_price?: number | null
           tags?: string[]
+          telegram_id?: string
           updated_at?: string
           username: string
+          whatsapp_number?: string
         }
         Update: {
+          address?: string
           avatar_url?: string | null
           bio?: string
+          contact_email?: string
+          country?: string
           created_at?: string
           currency?: string
           full_name?: string
+          github_repos?: string[]
           headline?: string
           id?: string
+          instagram_url?: string
           is_available?: boolean
           is_listed?: boolean
           latitude?: number | null
+          linkedin_url?: string
           location_name?: string
           longitude?: number | null
           services?: string[]
+          show_address?: boolean
           starting_price?: number | null
           tags?: string[]
+          telegram_id?: string
           updated_at?: string
           username?: string
+          whatsapp_number?: string
         }
         Relationships: []
       }
