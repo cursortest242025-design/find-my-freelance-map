@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import maplibregl from "maplibre-gl";
-import type { StyleSpecification } from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import type { MapMouseEvent, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 export type MapProfile = {
@@ -146,7 +146,7 @@ export function FreelancerMap({
       }
     };
     map.on("zoom", applySizes);
-    map.on("click", (event) => pickHandler.current?.(event.lngLat.lat, event.lngLat.lng));
+    map.on("click", (event: MapMouseEvent) => pickHandler.current?.(event.lngLat.lat, event.lngLat.lng));
     map.once("load", applySizes);
 
     return () => {
