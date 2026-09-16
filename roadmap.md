@@ -1,15 +1,16 @@
-- [x] Fix all current preview typecheck and build errors
-- [x] Make freelancer pins open profile details directly
-- [x] Fix top search icon and text spacing
-- [x] Remove the freelancer directory and make the map full-width
-- [x] Apply the selected Atlaswork Social Map styling and people pins
-- [ ] Show the profile photo inside the teardrop pin
-- [ ] Delete all current users and their data
-- [ ] Profile contact links (email, LinkedIn, Instagram, WhatsApp, Telegram) - all optional
-- [ ] Profile address field with show/hide toggle
-- [ ] GitHub repo links for past work
-- [ ] Likes, dislikes and comments on profiles
-- [ ] Left slide-out sidebar with favourite users
-- [ ] Nicer map colors matching the site + easier pinpointing
-- [ ] Open map at the user's own area (e.g. Bangalore, India) on load
-- [ ] Country filter in the search bar that flies the map to that country
+# Atlaswork roadmap
+
+## Done
+- Google sign-in, profile setup first, GPS + manual map picking
+- 3D person pins with photo, zoom-aware sizing
+- Contact points: email, LinkedIn, Instagram, WhatsApp, Telegram (all optional)
+- Address with public/private toggle
+- GitHub repository links
+- Likes, dislikes and comments on profiles
+- Favourites slide-out panel on the left
+- Map opens at the visitor's own city; country filter in the search bar
+- Softer map colours matching the site, crosshair + reticle when picking a point
+- All previous demo users removed
+
+## Open
+- none
