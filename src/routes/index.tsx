@@ -1,14 +1,16 @@
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BriefcaseBusiness, LocateFixed, LogOut, MapPin, Pencil, Search, Sparkles, X } from "lucide-react";
+import { Globe2, LocateFixed, LogOut, Pencil, Search, Sparkles } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
-import type { MapProfile } from "@/components/FreelancerMap";
+import type { MapProfile, ViewTarget } from "@/components/FreelancerMap";
 import { ProfileEditor } from "@/components/ProfileEditor";
+import { ProfileDetails } from "@/components/ProfileDetails";
+import { FavoritesSidebar } from "@/components/FavoritesSidebar";
 
 const FreelancerMap = lazy(() => import("@/components/FreelancerMap").then((module) => ({ default: module.FreelancerMap })));
 
@@ -33,17 +35,28 @@ function Index() {
   const [picking, setPicking] = useState(false);
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [query, setQuery] = useState("");
-  const [portfolio, setPortfolio] = useState<{ id: string; title: string; description: string; image_url: string }[]>([]);
+  const [country, setCountry] = useState("all");
+  const [viewTarget, setViewTarget] = useState<ViewTarget | undefined>(undefined);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
   const promptedSetup = useRef(false);
+  const homeSet = useRef(false);
+
+  const loadFavorites = useCallback(async (userId: string | null) => {
+    if (!userId) { setFavoriteIds([]); return; }
+    const { data } = await supabase.from("favorites").select("profile_id").eq("user_id", userId);
+    setFavoriteIds((data ?? []).map((row) => row.profile_id));
+  }, []);
 
   const loadProfiles = useCallback(async () => {
     const [{ data: listed, error }, { data: auth }] = await Promise.all([
-      supabase.from("profiles").select("id,username,full_name,headline,bio,avatar_url,latitude,longitude,location_name,tags,services,starting_price,currency,is_available").eq("is_listed", true),
+      supabase.from("profiles").select("*").eq("is_listed", true),
       supabase.auth.getUser(),
     ]);
     if (error) toast.error("Could not load the freelancer map.");
     setProfiles((listed ?? []) as MapProfile[]);
     setMe(auth.user);
+    void loadFavorites(auth.user?.id ?? null);
     if (auth.user) {
       const { data } = await supabase.from("profiles").select("*").eq("id", auth.user.id).maybeSingle();
       const mine = data as MapProfile | null;
@@ -57,7 +70,7 @@ function Index() {
       setMyProfile(null);
       promptedSetup.current = false;
     }
-  }, []);
+  }, [loadFavorites]);
 
   useEffect(() => {
     void loadProfiles();
@@ -66,21 +79,68 @@ function Index() {
     return () => { void supabase.removeChannel(channel); data.subscription.unsubscribe(); };
   }, [loadProfiles]);
 
+  // Open the map where the visitor actually is, e.g. Bangalore for someone in India.
   useEffect(() => {
-    if (!selected) { setPortfolio([]); return; }
-    void supabase.from("portfolio_items").select("id,title,description,image_url").eq("profile_id", selected.id).order("sort_order").then(({ data }) => setPortfolio(data ?? []));
-  }, [selected]);
+    if (homeSet.current) return;
+    homeSet.current = true;
+    void (async () => {
+      try {
+        const response = await fetch("https://ipapi.co/json/");
+        if (!response.ok) return;
+        const data = (await response.json()) as { latitude?: number; longitude?: number };
+        if (typeof data.latitude === "number" && typeof data.longitude === "number") {
+          setViewTarget({ center: [data.latitude, data.longitude], zoom: 10, key: "home" });
+        }
+      } catch {
+        /* keep the world view */
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (selected && !profiles.some((profile) => profile.id === selected.id)) setSelected(null);
+  }, [profiles, selected]);
+
+  const countries = useMemo(
+    () => [...new Set(profiles.map((profile) => profile.country).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [profiles],
+  );
 
   const visible = useMemo(() => profiles.filter((profile) => {
-    const haystack = [profile.full_name, profile.username, profile.headline, profile.location_name, ...profile.tags, ...profile.services].join(" ").toLowerCase();
+    if (country !== "all" && profile.country !== country) return false;
+    const haystack = [profile.full_name, profile.username, profile.headline, profile.location_name, profile.country, ...profile.tags, ...profile.services].join(" ").toLowerCase();
     return haystack.includes(query.toLowerCase());
-  }), [profiles, query]);
+  }), [profiles, query, country]);
+
+  const favorites = useMemo(() => profiles.filter((profile) => favoriteIds.includes(profile.id)), [profiles, favoriteIds]);
 
   const pickedPoint = useMemo<[number, number] | undefined>(() => {
     if (pickedLocation) return [pickedLocation.lat, pickedLocation.lng];
     if (editing && myProfile?.latitude != null && myProfile.longitude != null) return [myProfile.latitude, myProfile.longitude];
     return undefined;
   }, [editing, myProfile, pickedLocation]);
+
+  async function changeCountry(next: string) {
+    setCountry(next);
+    if (next === "all") {
+      setViewTarget({ center: [20, 0], zoom: 2.4, key: "all" });
+      return;
+    }
+    const inCountry = profiles.filter((profile) => profile.country === next && profile.latitude != null && profile.longitude != null);
+    const first = inCountry[0];
+    if (first?.latitude != null && first.longitude != null) {
+      setViewTarget({ center: [first.latitude, first.longitude], zoom: inCountry.length > 1 ? 5 : 9, key: `country-${next}` });
+      return;
+    }
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&country=${encodeURIComponent(next)}`);
+      const data = (await response.json()) as { lat: string; lon: string }[];
+      const hit = data[0];
+      if (hit) setViewTarget({ center: [Number(hit.lat), Number(hit.lon)], zoom: 5, key: `country-${next}` });
+    } catch {
+      /* keep the current view */
+    }
+  }
 
   async function signIn() {
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin, extraParams: { prompt: "select_account" } });
@@ -89,8 +149,30 @@ function Index() {
 
   async function signOut() {
     await supabase.auth.signOut();
-    setEditing(false); setPicking(false); setSelected(null); setMe(null); setMyProfile(null);
+    setEditing(false); setPicking(false); setSelected(null); setMe(null); setMyProfile(null); setFavoriteIds([]);
     promptedSetup.current = false;
+  }
+
+  async function toggleFavorite(profile: MapProfile) {
+    if (!me) { void signIn(); return; }
+    if (favoriteIds.includes(profile.id)) {
+      const { error } = await supabase.from("favorites").delete().eq("user_id", me.id).eq("profile_id", profile.id);
+      if (error) { toast.error(error.message); return; }
+      setFavoriteIds((ids) => ids.filter((id) => id !== profile.id));
+      return;
+    }
+    const { error } = await supabase.from("favorites").insert({ user_id: me.id, profile_id: profile.id });
+    if (error) { toast.error(error.message); return; }
+    setFavoriteIds((ids) => [...ids, profile.id]);
+    toast.success("Added to your favourites.");
+  }
+
+  function openFavorite(profile: MapProfile) {
+    setSelected(profile);
+    setFavoritesOpen(false);
+    if (profile.latitude != null && profile.longitude != null) {
+      setViewTarget({ center: [profile.latitude, profile.longitude], zoom: 12, key: `fav-${profile.id}-${Date.now()}` });
+    }
   }
 
   function startPicking() {
@@ -109,7 +191,17 @@ function Index() {
     <main className="app-shell">
       <header className="topbar">
         <div className="brand"><span className="brand-mark">A</span>Atlaswork</div>
-        <div className="search-wrap"><Search className="search-icon" size={17} aria-hidden="true" /><Input className="search-input" aria-label="Search freelancers" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by skill, name or place" /></div>
+        <div className="search-wrap">
+          <Search className="search-icon" size={17} aria-hidden="true" />
+          <Input className="search-input" aria-label="Search freelancers" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by skill, name or place" />
+          <div className="country-filter">
+            <Globe2 size={14} aria-hidden="true" />
+            <select aria-label="Filter by country" value={country} onChange={(event) => void changeCountry(event.target.value)}>
+              <option value="all">All countries</option>
+              {countries.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </div>
+        </div>
         <div className="topbar-actions">
           {me && myProfile ? <><Button variant="map" onClick={() => setEditing(true)}><Pencil />My profile</Button><Button variant="ghost" size="icon" onClick={() => void signOut()} aria-label="Sign out"><LogOut /></Button></> : <Button variant="map" onClick={() => void signIn()}><Sparkles />Join the map</Button>}
         </div>
@@ -117,15 +209,23 @@ function Index() {
       <div className="map-layout" data-picking={picking}>
         <section className="map-stage" aria-label="World map of freelancers">
           {!visible.length && !picking && <div className="map-empty">{profiles.length ? "No freelancers match this search." : "Be the first freelancer to appear here."}</div>}
-          {picking && <div className="map-help">
-            <span><LocateFixed size={16} /> Tap the map to drop your exact point</span>
-            <Button variant="secondary" size="sm" onClick={() => { setPicking(false); setEditing(true); }}>Cancel</Button>
-          </div>}
-          <ClientOnly fallback={<div className="h-full w-full animate-pulse bg-muted" />}><Suspense fallback={<div className="h-full w-full animate-pulse bg-muted" />}><FreelancerMap profiles={visible} selectedId={selected?.id ?? null} onSelect={setSelected} pickLocation={picking ? finishPicking : undefined} pickedPoint={pickedPoint} focusPoint={pickedPoint} /></Suspense></ClientOnly>
-          {selected && !picking && <aside className="detail-panel">
-            <div className="detail-cover"><Button className="detail-close" variant="secondary" size="icon" onClick={() => setSelected(null)} aria-label="Close details"><X /></Button>{selected.avatar_url && <img className="detail-avatar" src={selected.avatar_url} alt={`${selected.full_name} profile`} />}</div>
-            <div className="detail-body"><span className="eyebrow">{selected.is_available ? "Available for work" : "Currently booked"}</span><h2>{selected.full_name || `@${selected.username}`}</h2><p>{selected.headline}</p><div className="detail-meta"><span><MapPin size={14} />{selected.location_name || "Pinned location"}</span>{selected.starting_price != null && <span><BriefcaseBusiness size={14} />From {selected.currency} {selected.starting_price}</span>}</div><div className="tag-list">{[...selected.services, ...selected.tags].map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div><h3>About</h3><p>{selected.bio || "This freelancer is ready to collaborate."}</p>{portfolio.length > 0 && <><h3>Selected work</h3><div className="portfolio-grid">{portfolio.map((item) => <figure key={item.id}><img src={item.image_url} alt={item.title} loading="lazy" /><figcaption>{item.title}</figcaption></figure>)}</div></>}</div>
-          </aside>}
+          {picking && <>
+            <div className="map-help">
+              <span><LocateFixed size={16} /> Tap the map to drop your exact point</span>
+              <Button variant="secondary" size="sm" onClick={() => { setPicking(false); setEditing(true); }}>Cancel</Button>
+            </div>
+            <div className="pick-reticle" aria-hidden="true" />
+          </>}
+          <ClientOnly fallback={<div className="h-full w-full animate-pulse bg-muted" />}><Suspense fallback={<div className="h-full w-full animate-pulse bg-muted" />}><FreelancerMap profiles={visible} selectedId={selected?.id ?? null} onSelect={setSelected} pickLocation={picking ? finishPicking : undefined} pickedPoint={pickedPoint} focusPoint={pickedPoint} viewTarget={viewTarget} /></Suspense></ClientOnly>
+          {!picking && <FavoritesSidebar open={favoritesOpen} onOpenChange={setFavoritesOpen} favorites={favorites} onSelect={openFavorite} onRemove={(profile) => void toggleFavorite(profile)} signedIn={Boolean(me)} />}
+          {selected && !picking && <ProfileDetails
+            profile={selected}
+            viewerId={me?.id ?? null}
+            isFavorite={favoriteIds.includes(selected.id)}
+            onToggleFavorite={(profile) => void toggleFavorite(profile)}
+            onClose={() => setSelected(null)}
+            onRequireSignIn={() => void signIn()}
+          />}
           {editing && myProfile && <ProfileEditor profile={myProfile} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); void loadProfiles(); }} onPickOnMap={startPicking} onLocationFound={(lat, lng) => setPickedLocation({ lat, lng })} pickedLocation={pickedLocation} />}
         </section>
       </div>
