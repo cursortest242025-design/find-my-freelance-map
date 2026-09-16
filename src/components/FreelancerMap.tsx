@@ -143,6 +143,7 @@ export function FreelancerMap({
   pickLocation,
   pickedPoint,
   focusPoint,
+  viewTarget,
 }: {
   profiles: MapProfile[];
   selectedId: string | null;
@@ -150,6 +151,7 @@ export function FreelancerMap({
   pickLocation: ((lat: number, lng: number) => void) | undefined;
   pickedPoint?: [number, number] | undefined;
   focusPoint?: [number, number] | undefined;
+  viewTarget?: ViewTarget | undefined;
 }) {
   return (
     <MapContainer
@@ -160,14 +162,15 @@ export function FreelancerMap({
       wheelPxPerZoomLevel={110}
       zoomSnap={0}
       zoomDelta={0.6}
-      className="h-full w-full"
+      className="h-full w-full atlas-map"
       zoomControl={false}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        maxZoom={19}
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        maxZoom={20}
       />
+      <ViewController target={viewTarget} />
       <FitToProfiles profiles={profiles} focus={focusPoint} />
       <LocationPicker onPick={pickLocation} />
       <Markers profiles={profiles} selectedId={selectedId} onSelect={onSelect} />
