@@ -19,6 +19,15 @@ export type MapProfile = {
   currency: string;
   is_available: boolean;
   is_listed: boolean;
+  contact_email: string;
+  linkedin_url: string;
+  instagram_url: string;
+  whatsapp_number: string;
+  telegram_id: string;
+  address: string;
+  show_address: boolean;
+  github_repos: string[];
+  country: string;
 };
 
 function escapeHtml(value: string) {
