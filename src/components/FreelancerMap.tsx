@@ -125,7 +125,6 @@ export function FreelancerMap({
       dragRotate: true,
       pitchWithRotate: true,
       maxPitch: 72,
-      antialias: true,
       fadeDuration: 120,
     });
     mapRef.current = map;
