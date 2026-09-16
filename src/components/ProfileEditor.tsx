@@ -25,6 +25,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
   const [projectTitle, setProjectTitle] = useState("");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "");
   const [locationName, setLocationName] = useState(profile.location_name);
+  const [country, setCountry] = useState(profile.country);
 
   const latitude = pickedLocation?.lat ?? profile.latitude;
   const longitude = pickedLocation?.lng ?? profile.longitude;
@@ -41,6 +42,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
       const country = address['country'] || "";
       const label = [city, country].filter(Boolean).join(", ");
       if (label) setLocationName(label);
+      if (country) setCountry(country);
     } catch {
       /* keep whatever the user typed */
     }
@@ -110,6 +112,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
     const services = String(form.get("services") ?? "").split(",").map((item) => item.trim()).filter(Boolean);
     const priceText = String(form.get("price") ?? "").trim();
     const isListed = form.get("listed") === "on";
+    const githubRepos = String(form.get("githubRepos") ?? "").split(/[\s,]+/).map((item) => item.trim()).filter(Boolean);
     if (isListed && (latitude == null || longitude == null)) {
       toast.error("Set your location before going live.");
       return;
@@ -121,6 +124,15 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
       headline: String(form.get("headline") ?? "").trim(),
       bio: String(form.get("bio") ?? "").trim(),
       location_name: locationName.trim(),
+      country: country.trim(),
+      contact_email: String(form.get("contactEmail") ?? "").trim(),
+      linkedin_url: String(form.get("linkedin") ?? "").trim(),
+      instagram_url: String(form.get("instagram") ?? "").trim(),
+      whatsapp_number: String(form.get("whatsapp") ?? "").trim(),
+      telegram_id: String(form.get("telegram") ?? "").trim(),
+      address: String(form.get("address") ?? "").trim(),
+      show_address: form.get("showAddress") === "on",
+      github_repos: githubRepos,
       latitude,
       longitude,
       tags,
@@ -170,6 +182,17 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
             {latitude != null && longitude != null ? `Pinned at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}` : "No point set yet."}
           </p>
         </div>
+        <div className="section-split"><span className="eyebrow">Contact points</span><p className="field-help">All of these are optional.</p></div>
+        <div className="field-grid">
+          <div><Label htmlFor="contactEmail">Email ID</Label><Input id="contactEmail" name="contactEmail" type="email" defaultValue={profile.contact_email} placeholder="you@studio.com" /></div>
+          <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" name="linkedin" defaultValue={profile.linkedin_url} placeholder="linkedin.com/in/you" /></div>
+          <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" name="instagram" defaultValue={profile.instagram_url} placeholder="instagram.com/you" /></div>
+          <div><Label htmlFor="whatsapp">WhatsApp number</Label><Input id="whatsapp" name="whatsapp" defaultValue={profile.whatsapp_number} placeholder="+91 90000 00000" /></div>
+          <div><Label htmlFor="telegram">Telegram ID</Label><Input id="telegram" name="telegram" defaultValue={profile.telegram_id} placeholder="@yourhandle" /></div>
+          <div><Label htmlFor="githubRepos">GitHub repositories</Label><Input id="githubRepos" name="githubRepos" defaultValue={profile.github_repos.join(", ")} placeholder="github.com/you/project" /><p className="field-help">Separate links with commas.</p></div>
+        </div>
+        <div><Label htmlFor="address">Address</Label><Textarea id="address" name="address" defaultValue={profile.address} rows={2} placeholder="Street, area, city, postcode" /></div>
+        <div className="toggle-row"><div><Label htmlFor="showAddress">Show my address publicly</Label><p>Keep it off to share only your city and map point.</p></div><Switch id="showAddress" name="showAddress" defaultChecked={profile.show_address} /></div>
         <div className="privacy-note"><MapPin /><p>Your exact map point will be visible publicly when your profile is listed.</p></div>
         <div className="toggle-row"><div><Label htmlFor="available">Available for work</Label><p>Show clients you can take new projects.</p></div><Switch id="available" name="available" defaultChecked={profile.is_available} /></div>
         <div className="toggle-row"><div><Label htmlFor="listed">List me on the map</Label><p>Make your profile discoverable to everyone.</p></div><Switch id="listed" name="listed" defaultChecked={profile.is_listed} /></div>
