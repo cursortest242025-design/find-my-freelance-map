@@ -29,9 +29,12 @@ function escapeHtml(value: string) {
 
 function buildIcon(profile: MapProfile, size: number, selected: boolean) {
   const initial = escapeHtml((profile.full_name || profile.username || "?").slice(0, 1).toUpperCase());
-  const face = profile.avatar_url
-    ? `<img src="${escapeHtml(profile.avatar_url)}" alt="" />`
-    : `<span class="pin3d-person" aria-hidden="true"><span class="pin3d-head"></span><span class="pin3d-shoulders"></span><span class="pin3d-initial">${initial}</span></span>`;
+  // Always render the silhouette as a base layer so the photo simply covers it when it loads.
+  const fallback = `<span class="pin3d-person" aria-hidden="true"><span class="pin3d-head"></span><span class="pin3d-shoulders"></span><span class="pin3d-initial">${initial}</span></span>`;
+  const photo = profile.avatar_url
+    ? `<img class="pin3d-photo" src="${escapeHtml(profile.avatar_url)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.style.display='none'" />`
+    : "";
+  const face = `${fallback}${photo}`;
   return L.divIcon({
     className: `pin3d${selected ? " pin3d-selected" : ""}${profile.is_available ? " pin3d-available" : ""}`,
     html: `<span class="pin3d-body" style="--pin-size:${size}px"><span class="pin3d-face">${face}</span><span class="pin3d-status"></span></span><span class="pin3d-tail"></span><span class="pin3d-shadow"></span>`,
