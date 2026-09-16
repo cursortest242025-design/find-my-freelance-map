@@ -145,6 +145,10 @@ export function FreelancerMap({
       }
     };
     map.on("zoom", applySizes);
+    // Level out to a straight-on globe view when the user pulls back out to world scale.
+    map.on("zoomend", () => {
+      if (map.getZoom() < 5 && map.getPitch() > 1) map.easeTo({ pitch: 0, duration: 500 });
+    });
     map.on("click", (event: MapMouseEvent) => pickHandler.current?.(event.lngLat.lat, event.lngLat.lng));
     map.once("load", applySizes);
 
