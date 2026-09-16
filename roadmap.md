@@ -3,3 +3,13 @@
 - [x] Fix top search icon and text spacing
 - [x] Remove the freelancer directory and make the map full-width
 - [x] Apply the selected Atlaswork Social Map styling and people pins
+- [ ] Show the profile photo inside the teardrop pin
+- [ ] Delete all current users and their data
+- [ ] Profile contact links (email, LinkedIn, Instagram, WhatsApp, Telegram) - all optional
+- [ ] Profile address field with show/hide toggle
+- [ ] GitHub repo links for past work
+- [ ] Likes, dislikes and comments on profiles
+- [ ] Left slide-out sidebar with favourite users
+- [ ] Nicer map colors matching the site + easier pinpointing
+- [ ] Open map at the user's own area (e.g. Bangalore, India) on load
+- [ ] Country filter in the search bar that flies the map to that country
