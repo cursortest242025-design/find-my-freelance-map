@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   BriefcaseBusiness,
   Github,
@@ -131,7 +131,7 @@ export function ProfileDetails({
     void loadComments();
   }
 
-  const contacts: { key: string; icon: JSX.Element; label: string; href: string }[] = [];
+  const contacts: { key: string; icon: ReactNode; label: string; href: string }[] = [];
   if (profile.contact_email) contacts.push({ key: "email", icon: <Mail size={14} />, label: profile.contact_email, href: `mailto:${profile.contact_email}` });
   if (profile.linkedin_url) contacts.push({ key: "linkedin", icon: <Linkedin size={14} />, label: "LinkedIn", href: normalizeUrl(profile.linkedin_url) });
   if (profile.instagram_url) contacts.push({ key: "instagram", icon: <Instagram size={14} />, label: "Instagram", href: normalizeUrl(profile.instagram_url) });
