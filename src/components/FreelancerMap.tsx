@@ -48,10 +48,10 @@ const globeStyle: StyleSpecification = {
     "sky-color": "#5b8dd6",
     "sky-horizon-blend": 0.55,
     "horizon-color": "#d9e7f5",
-    "horizon-fog-blend": 0.6,
-    "fog-color": "#eaf1f8",
-    "fog-ground-blend": 0.05,
-    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 6, 0.6, 8, 0],
+    "horizon-fog-blend": 0.2,
+    "fog-color": "#cfe1f2",
+    "fog-ground-blend": 0.85,
+    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 0.75, 5, 0.4, 8, 0],
   },
   sources: {
     osm: {
