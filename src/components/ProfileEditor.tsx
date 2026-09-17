@@ -89,21 +89,30 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
     setUploading(false);
   }
 
-  async function uploadProject(file: File): Promise<void> {
-    if (!projectTitle.trim()) { toast.error("Add a project title first."); return; }
+  async function uploadProjects(files: File[]): Promise<void> {
     setUploading(true);
-    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${profile.id}/work-${Date.now()}.${extension}`;
-    const upload = await supabase.storage.from("freelancer-media").upload(path, file);
-    if (upload.error) { setUploading(false); toast.error(upload.error.message); return; }
-    const signed = await supabase.storage.from("freelancer-media").createSignedUrl(path, 31536000);
-    if (signed.error) { setUploading(false); toast.error(signed.error.message); return; }
-    const created = await supabase.from("portfolio_items").insert({ profile_id: profile.id, title: projectTitle.trim(), image_url: signed.data.signedUrl });
+    const baseTitle = projectTitle.trim();
+    let added = 0;
+    for (const [index, file] of files.entries()) {
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${profile.id}/work-${Date.now()}-${index}.${extension}`;
+      const upload = await supabase.storage.from("freelancer-media").upload(path, file);
+      if (upload.error) { toast.error(upload.error.message); continue; }
+      const signed = await supabase.storage.from("freelancer-media").createSignedUrl(path, 31536000);
+      if (signed.error) { toast.error(signed.error.message); continue; }
+      const fallback = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Project";
+      const title = baseTitle ? (files.length > 1 ? `${baseTitle} ${index + 1}` : baseTitle) : fallback;
+      const created = await supabase.from("portfolio_items").insert({ profile_id: profile.id, title, image_url: signed.data.signedUrl, sort_order: index });
+      if (created.error) { toast.error(created.error.message); continue; }
+      added += 1;
+    }
     setUploading(false);
-    if (created.error) { toast.error(created.error.message); return; }
-    setProjectTitle("");
-    toast.success("Portfolio project added.");
+    if (added) {
+      setProjectTitle("");
+      toast.success(`${added} project image${added > 1 ? "s" : ""} added.`);
+    }
   }
+
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
