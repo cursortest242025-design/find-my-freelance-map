@@ -133,7 +133,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
       headline: String(form.get("headline") ?? "").trim(),
       bio: String(form.get("bio") ?? "").trim(),
       location_name: locationName.trim(),
-      country: country.trim(),
+      country: (country.trim() || locationName.split(",").pop()?.trim() || ""),
       contact_email: String(form.get("contactEmail") ?? "").trim(),
       linkedin_url: String(form.get("linkedin") ?? "").trim(),
       instagram_url: String(form.get("instagram") ?? "").trim(),
@@ -205,7 +205,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
         <div className="privacy-note"><MapPin /><p>Your exact map point will be visible publicly when your profile is listed.</p></div>
         <div className="toggle-row"><div><Label htmlFor="available">Available for work</Label><p>Show clients you can take new projects.</p></div><Switch id="available" name="available" defaultChecked={profile.is_available} /></div>
         <div className="toggle-row"><div><Label htmlFor="listed">List me on the map</Label><p>Make your profile discoverable to everyone.</p></div><Switch id="listed" name="listed" defaultChecked={profile.is_listed} /></div>
-        <div className="portfolio-upload"><div><Label htmlFor="projectTitle">Portfolio project</Label><Input id="projectTitle" value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="Project title" /></div><div><Label htmlFor="projectImage">Demo image</Label><Input id="projectImage" type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProject(file); }} /></div></div>
+        <div className="portfolio-upload"><div><Label htmlFor="projectTitle">Portfolio project</Label><Input id="projectTitle" value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="Project title (optional)" /></div><div><Label htmlFor="projectImage">Demo images</Label><Input id="projectImage" type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ""; if (files.length) void uploadProjects(files); }} /><p className="field-help">{uploading ? "Uploading..." : "You can select several images at once."}</p></div></div>
         <Button type="submit" size="lg" disabled={saving || uploading}><Check />{saving ? "Saving..." : "Save profile"}</Button>
       </form>
     </aside>
