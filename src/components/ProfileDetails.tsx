@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   BriefcaseBusiness,
+  ChevronRight,
+  FolderOpen,
   Github,
   Heart,
   Home,
@@ -15,6 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -135,12 +138,13 @@ export function ProfileDetails({
     void loadComments();
   }
 
-  const contacts: { key: string; icon: ReactNode; label: string; href: string }[] = [];
-  if (profile.contact_email) contacts.push({ key: "email", icon: <Mail size={14} />, label: profile.contact_email, href: `mailto:${profile.contact_email}` });
-  if (profile.linkedin_url) contacts.push({ key: "linkedin", icon: <Linkedin size={14} />, label: "LinkedIn", href: normalizeUrl(profile.linkedin_url) });
-  if (profile.instagram_url) contacts.push({ key: "instagram", icon: <Instagram size={14} />, label: "Instagram", href: normalizeUrl(profile.instagram_url) });
-  if (profile.whatsapp_number) contacts.push({ key: "whatsapp", icon: <MessageCircle size={14} />, label: "WhatsApp", href: `https://wa.me/${profile.whatsapp_number.replace(/[^\d]/g, "")}` });
-  if (profile.telegram_id) contacts.push({ key: "telegram", icon: <Send size={14} />, label: "Telegram", href: `https://t.me/${profile.telegram_id.replace(/^@/, "")}` });
+  const contacts: { key: string; icon: ReactNode; title: string; label: string; href: string }[] = [];
+  if (profile.contact_email) contacts.push({ key: "email", icon: <Mail size={16} />, title: "Email", label: profile.contact_email, href: `mailto:${profile.contact_email}` });
+  if (profile.linkedin_url) contacts.push({ key: "linkedin", icon: <Linkedin size={16} />, title: "LinkedIn", label: "Open profile", href: normalizeUrl(profile.linkedin_url) });
+  if (profile.instagram_url) contacts.push({ key: "instagram", icon: <Instagram size={16} />, title: "Instagram", label: "Open profile", href: normalizeUrl(profile.instagram_url) });
+  if (profile.whatsapp_number) contacts.push({ key: "whatsapp", icon: <MessageCircle size={16} />, title: "WhatsApp", label: profile.whatsapp_number, href: `https://wa.me/${profile.whatsapp_number.replace(/[^\d]/g, "")}` });
+  if (profile.telegram_id) contacts.push({ key: "telegram", icon: <Send size={16} />, title: "Telegram", label: profile.telegram_id, href: `https://t.me/${profile.telegram_id.replace(/^@/, "")}` });
+
 
   return (
     <aside className="detail-panel" aria-label={`${profile.full_name || profile.username} profile`}>
