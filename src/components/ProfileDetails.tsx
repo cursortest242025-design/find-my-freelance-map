@@ -90,6 +90,7 @@ export function ProfileDetails({
   }, [profile.id]);
 
   useEffect(() => {
+    setShowPortfolio(false);
     void supabase
       .from("portfolio_items")
       .select("id,title,description,image_url")
@@ -99,6 +100,7 @@ export function ProfileDetails({
     void loadReactions();
     void loadComments();
   }, [profile.id, loadReactions, loadComments]);
+
 
   async function vote(value: 1 | -1) {
     if (!viewerId) { onRequireSignIn(); return; }
@@ -169,8 +171,8 @@ export function ProfileDetails({
         <div className="tag-list">{[...profile.services, ...profile.tags].map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div>
 
         <div className="reaction-row">
-          <button type="button" className="reaction" data-active={myVote === 1} onClick={() => void vote(1)} aria-label="Like this profile"><ThumbsUp size={15} />{likes}</button>
-          <button type="button" className="reaction" data-active={myVote === -1} onClick={() => void vote(-1)} aria-label="Dislike this profile"><ThumbsDown size={15} />{dislikes}</button>
+          <button type="button" className="reaction reaction-like" data-active={myVote === 1} onClick={() => void vote(1)} aria-label="Like this profile"><ThumbsUp size={15} />{likes}</button>
+          <button type="button" className="reaction reaction-dislike" data-active={myVote === -1} onClick={() => void vote(-1)} aria-label="Dislike this profile"><ThumbsDown size={15} />{dislikes}</button>
         </div>
 
         <h3>About</h3>
@@ -179,10 +181,12 @@ export function ProfileDetails({
         {contacts.length > 0 && (
           <>
             <h3>Get in touch</h3>
-            <div className="contact-list">
+            <div className="link-stack">
               {contacts.map((contact) => (
-                <a key={contact.key} className="contact-chip" href={contact.href} target="_blank" rel="noreferrer noopener">
-                  {contact.icon}{contact.label}
+                <a key={contact.key} className="link-row" href={contact.href} target="_blank" rel="noreferrer noopener">
+                  <span className="link-row-icon">{contact.icon}</span>
+                  <span className="link-row-copy"><strong>{contact.title}</strong><span>{contact.label}</span></span>
+                  <ChevronRight size={16} className="link-row-arrow" />
                 </a>
               ))}
             </div>
@@ -192,26 +196,41 @@ export function ProfileDetails({
         {profile.github_repos.length > 0 && (
           <>
             <h3>Code</h3>
-            <div className="contact-list">
+            <div className="link-stack">
               {profile.github_repos.map((repo) => (
-                <a key={repo} className="contact-chip" href={normalizeUrl(repo)} target="_blank" rel="noreferrer noopener">
-                  <Github size={14} />{repo.replace(/^https?:\/\/(www\.)?github\.com\//, "")}
+                <a key={repo} className="link-row" href={normalizeUrl(repo)} target="_blank" rel="noreferrer noopener">
+                  <span className="link-row-icon"><Github size={16} /></span>
+                  <span className="link-row-copy"><strong>GitHub</strong><span>{repo.replace(/^https?:\/\/(www\.)?github\.com\//, "")}</span></span>
+                  <ChevronRight size={16} className="link-row-arrow" />
                 </a>
               ))}
             </div>
           </>
         )}
 
-        {portfolio.length > 0 && (
-          <>
-            <h3>Selected work</h3>
+
+        <h3>Project portfolio</h3>
+        <button type="button" className="link-row link-row-action" onClick={() => setShowPortfolio((open) => !open)} aria-expanded={showPortfolio}>
+          <span className="link-row-icon"><FolderOpen size={16} /></span>
+          <span className="link-row-copy"><strong>{showPortfolio ? "Hide projects" : "View projects"}</strong><span>{portfolio.length ? `${portfolio.length} project${portfolio.length > 1 ? "s" : ""} with images` : "No projects added yet"}</span></span>
+          <ChevronRight size={16} className="link-row-arrow" data-open={showPortfolio} />
+        </button>
+        {showPortfolio && (
+          portfolio.length ? (
             <div className="portfolio-grid">
               {portfolio.map((item) => (
-                <figure key={item.id}><img src={item.image_url} alt={item.title} loading="lazy" /><figcaption>{item.title}</figcaption></figure>
+                <figure key={item.id}>
+                  <img src={item.image_url} alt={item.title} loading="lazy" />
+                  <figcaption>{item.title}</figcaption>
+                  {item.description && <p className="portfolio-note">{item.description}</p>}
+                </figure>
               ))}
             </div>
-          </>
+          ) : (
+            <p>This freelancer has not uploaded any project images yet.</p>
+          )
         )}
+
 
         <h3>Comments</h3>
         <div className="comment-form">
