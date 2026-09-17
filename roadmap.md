@@ -11,6 +11,9 @@
 - Map opens at the visitor's own city; country filter in the search bar
 - Softer map colours matching the site, crosshair + reticle when picking a point
 - All previous demo users removed
+- 3D globe view with smooth, fast wheel/trackpad zoom and sharp tiles
+- Removed the old unused map library
 
 ## Open
 - none
+
