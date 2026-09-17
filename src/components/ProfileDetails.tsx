@@ -48,12 +48,14 @@ export function ProfileDetails({
   onRequireSignIn: () => void;
 }) {
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
+  const [showPortfolio, setShowPortfolio] = useState(false);
   const [likes, setLikes] = useState(0);
   const [dislikes, setDislikes] = useState(0);
   const [myVote, setMyVote] = useState<1 | -1 | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
+
 
   const loadReactions = useCallback(async () => {
     const { data } = await supabase.from("profile_reactions").select("user_id,value").eq("profile_id", profile.id);
