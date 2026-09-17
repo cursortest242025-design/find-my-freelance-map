@@ -89,21 +89,30 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
     setUploading(false);
   }
 
-  async function uploadProject(file: File): Promise<void> {
-    if (!projectTitle.trim()) { toast.error("Add a project title first."); return; }
+  async function uploadProjects(files: File[]): Promise<void> {
     setUploading(true);
-    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${profile.id}/work-${Date.now()}.${extension}`;
-    const upload = await supabase.storage.from("freelancer-media").upload(path, file);
-    if (upload.error) { setUploading(false); toast.error(upload.error.message); return; }
-    const signed = await supabase.storage.from("freelancer-media").createSignedUrl(path, 31536000);
-    if (signed.error) { setUploading(false); toast.error(signed.error.message); return; }
-    const created = await supabase.from("portfolio_items").insert({ profile_id: profile.id, title: projectTitle.trim(), image_url: signed.data.signedUrl });
+    const baseTitle = projectTitle.trim();
+    let added = 0;
+    for (const [index, file] of files.entries()) {
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${profile.id}/work-${Date.now()}-${index}.${extension}`;
+      const upload = await supabase.storage.from("freelancer-media").upload(path, file);
+      if (upload.error) { toast.error(upload.error.message); continue; }
+      const signed = await supabase.storage.from("freelancer-media").createSignedUrl(path, 31536000);
+      if (signed.error) { toast.error(signed.error.message); continue; }
+      const fallback = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Project";
+      const title = baseTitle ? (files.length > 1 ? `${baseTitle} ${index + 1}` : baseTitle) : fallback;
+      const created = await supabase.from("portfolio_items").insert({ profile_id: profile.id, title, image_url: signed.data.signedUrl, sort_order: index });
+      if (created.error) { toast.error(created.error.message); continue; }
+      added += 1;
+    }
     setUploading(false);
-    if (created.error) { toast.error(created.error.message); return; }
-    setProjectTitle("");
-    toast.success("Portfolio project added.");
+    if (added) {
+      setProjectTitle("");
+      toast.success(`${added} project image${added > 1 ? "s" : ""} added.`);
+    }
   }
+
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -124,7 +133,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
       headline: String(form.get("headline") ?? "").trim(),
       bio: String(form.get("bio") ?? "").trim(),
       location_name: locationName.trim(),
-      country: country.trim(),
+      country: (country.trim() || locationName.split(",").pop()?.trim() || ""),
       contact_email: String(form.get("contactEmail") ?? "").trim(),
       linkedin_url: String(form.get("linkedin") ?? "").trim(),
       instagram_url: String(form.get("instagram") ?? "").trim(),
@@ -196,7 +205,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
         <div className="privacy-note"><MapPin /><p>Your exact map point will be visible publicly when your profile is listed.</p></div>
         <div className="toggle-row"><div><Label htmlFor="available">Available for work</Label><p>Show clients you can take new projects.</p></div><Switch id="available" name="available" defaultChecked={profile.is_available} /></div>
         <div className="toggle-row"><div><Label htmlFor="listed">List me on the map</Label><p>Make your profile discoverable to everyone.</p></div><Switch id="listed" name="listed" defaultChecked={profile.is_listed} /></div>
-        <div className="portfolio-upload"><div><Label htmlFor="projectTitle">Portfolio project</Label><Input id="projectTitle" value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="Project title" /></div><div><Label htmlFor="projectImage">Demo image</Label><Input id="projectImage" type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProject(file); }} /></div></div>
+        <div className="portfolio-upload"><div><Label htmlFor="projectTitle">Portfolio project</Label><Input id="projectTitle" value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="Project title (optional)" /></div><div><Label htmlFor="projectImage">Demo images</Label><Input id="projectImage" type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ""; if (files.length) void uploadProjects(files); }} /><p className="field-help">{uploading ? "Uploading..." : "You can select several images at once."}</p></div></div>
         <Button type="submit" size="lg" disabled={saving || uploading}><Check />{saving ? "Saving..." : "Save profile"}</Button>
       </form>
     </aside>
