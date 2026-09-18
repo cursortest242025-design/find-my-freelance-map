@@ -45,33 +45,54 @@ export type Database = {
       }
       portfolio_items: {
         Row: {
+          category: string
+          client_name: string
+          completion_year: number | null
           created_at: string
           description: string
           id: string
           image_url: string
+          image_urls: string[]
           profile_id: string
+          project_url: string
+          results: string
           sort_order: number
           title: string
+          tools: string[]
           updated_at: string
         }
         Insert: {
+          category?: string
+          client_name?: string
+          completion_year?: number | null
           created_at?: string
           description?: string
           id?: string
           image_url: string
+          image_urls?: string[]
           profile_id: string
+          project_url?: string
+          results?: string
           sort_order?: number
           title: string
+          tools?: string[]
           updated_at?: string
         }
         Update: {
+          category?: string
+          client_name?: string
+          completion_year?: number | null
           created_at?: string
           description?: string
           id?: string
           image_url?: string
+          image_urls?: string[]
           profile_id?: string
+          project_url?: string
+          results?: string
           sort_order?: number
           title?: string
+          tools?: string[]
           updated_at?: string
         }
         Relationships: [
