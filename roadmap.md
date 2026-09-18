@@ -19,6 +19,10 @@
 - Country filled from the picked place; clicking a person flies the map to them
 
 ## Open
-- none
+- Brand-colored contact icons
+- Structured portfolio case studies with multiple screenshots
+- Centered portfolio viewer
+- Rotating Earth startup for visitors
+- Saved-city startup for returning users
 
 
