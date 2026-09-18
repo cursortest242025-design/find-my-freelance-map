@@ -13,7 +13,12 @@
 - All previous demo users removed
 - 3D globe view with smooth, fast wheel/trackpad zoom and sharp tiles
 - Removed the old unused map library
+- Stacked, highlighted contact rows + "View projects" portfolio button
+- Like turns green, dislike turns red
+- Multiple work images per upload, optional project title
+- Country filled from the picked place; clicking a person flies the map to them
 
 ## Open
 - none
+
 
