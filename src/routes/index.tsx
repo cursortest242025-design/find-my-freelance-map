@@ -216,7 +216,7 @@ function Index() {
             </div>
             <div className="pick-reticle" aria-hidden="true" />
           </>}
-          <ClientOnly fallback={<div className="h-full w-full animate-pulse bg-muted" />}><Suspense fallback={<div className="h-full w-full animate-pulse bg-muted" />}><FreelancerMap profiles={visible} selectedId={selected?.id ?? null} onSelect={setSelected} pickLocation={picking ? finishPicking : undefined} pickedPoint={pickedPoint} focusPoint={pickedPoint} viewTarget={viewTarget} /></Suspense></ClientOnly>
+          <ClientOnly fallback={<div className="h-full w-full animate-pulse bg-muted" />}><Suspense fallback={<div className="h-full w-full animate-pulse bg-muted" />}><FreelancerMap profiles={visible} selectedId={selected?.id ?? null} onSelect={openFavorite} pickLocation={picking ? finishPicking : undefined} pickedPoint={pickedPoint} focusPoint={pickedPoint} viewTarget={viewTarget} /></Suspense></ClientOnly>
           {!picking && <FavoritesSidebar open={favoritesOpen} onOpenChange={setFavoritesOpen} favorites={favorites} onSelect={openFavorite} onRemove={(profile) => void toggleFavorite(profile)} signedIn={Boolean(me)} />}
           {selected && !picking && <ProfileDetails
             profile={selected}
