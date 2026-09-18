@@ -23,6 +23,13 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
   const [uploading, setUploading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [projectTitle, setProjectTitle] = useState("");
+  const [projectCategory, setProjectCategory] = useState("");
+  const [projectClient, setProjectClient] = useState("");
+  const [projectYear, setProjectYear] = useState("");
+  const [projectUrl, setProjectUrl] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [projectTools, setProjectTools] = useState("");
+  const [projectResults, setProjectResults] = useState("");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "");
   const [locationName, setLocationName] = useState(profile.location_name);
   const [country, setCountry] = useState(profile.country);
@@ -90,9 +97,13 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
   }
 
   async function uploadProjects(files: File[]): Promise<void> {
+    const title = projectTitle.trim();
+    if (!title) {
+      toast.error("Add a project title before uploading screenshots.");
+      return;
+    }
     setUploading(true);
-    const baseTitle = projectTitle.trim();
-    let added = 0;
+    const imageUrls: string[] = [];
     for (const [index, file] of files.entries()) {
       const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${profile.id}/work-${Date.now()}-${index}.${extension}`;
@@ -100,17 +111,29 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
       if (upload.error) { toast.error(upload.error.message); continue; }
       const signed = await supabase.storage.from("freelancer-media").createSignedUrl(path, 31536000);
       if (signed.error) { toast.error(signed.error.message); continue; }
-      const fallback = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Project";
-      const title = baseTitle ? (files.length > 1 ? `${baseTitle} ${index + 1}` : baseTitle) : fallback;
-      const created = await supabase.from("portfolio_items").insert({ profile_id: profile.id, title, image_url: signed.data.signedUrl, sort_order: index });
-      if (created.error) { toast.error(created.error.message); continue; }
-      added += 1;
+      imageUrls.push(signed.data.signedUrl);
     }
+    if (!imageUrls.length) { setUploading(false); return; }
+    const year = projectYear ? Number(projectYear) : null;
+    const created = await supabase.from("portfolio_items").insert({
+      profile_id: profile.id,
+      title,
+      category: projectCategory.trim(),
+      client_name: projectClient.trim(),
+      completion_year: year,
+      project_url: projectUrl.trim(),
+      description: projectDescription.trim(),
+      tools: projectTools.split(",").map((tool) => tool.trim()).filter(Boolean),
+      results: projectResults.trim(),
+      image_url: imageUrls[0],
+      image_urls: imageUrls,
+      sort_order: Date.now(),
+    });
     setUploading(false);
-    if (added) {
-      setProjectTitle("");
-      toast.success(`${added} project image${added > 1 ? "s" : ""} added.`);
-    }
+    if (created.error) { toast.error(created.error.message); return; }
+    setProjectTitle(""); setProjectCategory(""); setProjectClient(""); setProjectYear("");
+    setProjectUrl(""); setProjectDescription(""); setProjectTools(""); setProjectResults("");
+    toast.success(`Project added with ${imageUrls.length} screenshot${imageUrls.length > 1 ? "s" : ""}.`);
   }
 
 
@@ -205,7 +228,20 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
         <div className="privacy-note"><MapPin /><p>Your exact map point will be visible publicly when your profile is listed.</p></div>
         <div className="toggle-row"><div><Label htmlFor="available">Available for work</Label><p>Show clients you can take new projects.</p></div><Switch id="available" name="available" defaultChecked={profile.is_available} /></div>
         <div className="toggle-row"><div><Label htmlFor="listed">List me on the map</Label><p>Make your profile discoverable to everyone.</p></div><Switch id="listed" name="listed" defaultChecked={profile.is_listed} /></div>
-        <div className="portfolio-upload"><div><Label htmlFor="projectTitle">Portfolio project</Label><Input id="projectTitle" value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="Project title (optional)" /></div><div><Label htmlFor="projectImage">Demo images</Label><Input id="projectImage" type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ""; if (files.length) void uploadProjects(files); }} /><p className="field-help">{uploading ? "Uploading..." : "You can select several images at once."}</p></div></div>
+        <div className="portfolio-builder">
+          <div className="section-split"><span className="eyebrow">Past work</span><p className="field-help">Build one clear case study at a time.</p></div>
+          <div><Label htmlFor="projectTitle">Project title</Label><Input id="projectTitle" value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="Mobile banking redesign" /></div>
+          <div className="field-grid">
+            <div><Label htmlFor="projectCategory">Service or category</Label><Input id="projectCategory" value={projectCategory} onChange={(event) => setProjectCategory(event.target.value)} placeholder="Product design" /></div>
+            <div><Label htmlFor="projectClient">Client or company</Label><Input id="projectClient" value={projectClient} onChange={(event) => setProjectClient(event.target.value)} placeholder="Optional" /></div>
+            <div><Label htmlFor="projectYear">Completion year</Label><Input id="projectYear" type="number" min="1900" max="2100" value={projectYear} onChange={(event) => setProjectYear(event.target.value)} placeholder="2026" /></div>
+            <div><Label htmlFor="projectUrl">Live project link</Label><Input id="projectUrl" type="url" value={projectUrl} onChange={(event) => setProjectUrl(event.target.value)} placeholder="https://…" /></div>
+          </div>
+          <div><Label htmlFor="projectDescription">Project overview</Label><Textarea id="projectDescription" rows={3} value={projectDescription} onChange={(event) => setProjectDescription(event.target.value)} placeholder="What was the challenge and what did you create?" /></div>
+          <div><Label htmlFor="projectTools">Tools and skills</Label><Input id="projectTools" value={projectTools} onChange={(event) => setProjectTools(event.target.value)} placeholder="Figma, React, Research" /><p className="field-help">Separate each item with a comma.</p></div>
+          <div><Label htmlFor="projectResults">Outcome or results</Label><Textarea id="projectResults" rows={2} value={projectResults} onChange={(event) => setProjectResults(event.target.value)} placeholder="Share a measurable result, client response, or impact." /></div>
+          <div className="portfolio-upload"><div><Label htmlFor="projectImage">Project screenshots</Label><Input id="projectImage" type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ""; if (files.length) void uploadProjects(files); }} /><p className="field-help">{uploading ? "Uploading project..." : "Select every screenshot for this project together."}</p></div></div>
+        </div>
         <Button type="submit" size="lg" disabled={saving || uploading}><Check />{saving ? "Saving..." : "Save profile"}</Button>
       </form>
     </aside>

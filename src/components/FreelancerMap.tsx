@@ -108,6 +108,7 @@ export function FreelancerMap({
   const pickedRef = useRef<maplibregl.Marker | null>(null);
   const pickHandler = useRef(pickLocation);
   const selectHandler = useRef(onSelect);
+  const spinningRef = useRef(true);
   pickHandler.current = pickLocation;
   selectHandler.current = onSelect;
 
@@ -133,6 +134,19 @@ export function FreelancerMap({
     map.scrollZoom.setZoomRate(1 / 60);
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), "bottom-right");
     map.touchZoomRotate.enableRotation();
+
+    const stopSpinning = () => { spinningRef.current = false; };
+    map.on("mousedown", stopSpinning);
+    map.on("touchstart", stopSpinning);
+    map.on("wheel", stopSpinning);
+    const rotate = () => {
+      if (!spinningRef.current || map.getZoom() > 2.5) return;
+      const center = map.getCenter();
+      center.lng -= 0.035;
+      map.easeTo({ center, duration: 1000, easing: (value) => value });
+    };
+    map.on("moveend", rotate);
+    map.once("load", rotate);
 
     const applySizes = () => {
       const size = pinSize(map.getZoom());
@@ -223,6 +237,7 @@ export function FreelancerMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !viewTarget) return;
+    spinningRef.current = false;
     map.flyTo({
       center: [viewTarget.center[1], viewTarget.center[0]],
       zoom: viewTarget.zoom,
