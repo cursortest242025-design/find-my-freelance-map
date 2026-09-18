@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   BriefcaseBusiness,
   ChevronRight,
@@ -12,6 +13,7 @@ import {
   MapPin,
   MessageCircle,
   Send,
+  ExternalLink,
   ThumbsDown,
   ThumbsUp,
   Trash2,
@@ -33,7 +35,7 @@ type Comment = {
   author_avatar: string | null;
 };
 
-type PortfolioItem = { id: string; title: string; description: string; image_url: string };
+type PortfolioItem = { id: string; title: string; description: string; image_url: string; image_urls: string[]; category: string; client_name: string; completion_year: number | null; project_url: string; tools: string[]; results: string };
 
 export function ProfileDetails({
   profile,
@@ -52,6 +54,8 @@ export function ProfileDetails({
 }) {
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showPortfolio, setShowPortfolio] = useState(false);
+  const [activeProject, setActiveProject] = useState(0);
+  const [activeImage, setActiveImage] = useState(0);
   const [likes, setLikes] = useState(0);
   const [dislikes, setDislikes] = useState(0);
   const [myVote, setMyVote] = useState<1 | -1 | null>(null);
@@ -96,13 +100,20 @@ export function ProfileDetails({
     setShowPortfolio(false);
     void supabase
       .from("portfolio_items")
-      .select("id,title,description,image_url")
+      .select("id,title,description,image_url,image_urls,category,client_name,completion_year,project_url,tools,results")
       .eq("profile_id", profile.id)
       .order("sort_order")
       .then(({ data }) => setPortfolio(data ?? []));
     void loadReactions();
     void loadComments();
   }, [profile.id, loadReactions, loadComments]);
+
+  useEffect(() => {
+    if (!showPortfolio) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setShowPortfolio(false); };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [showPortfolio]);
 
 
   async function vote(value: 1 | -1) {
@@ -187,7 +198,7 @@ export function ProfileDetails({
             <h3>Get in touch</h3>
             <div className="link-stack">
               {contacts.map((contact) => (
-                <a key={contact.key} className="link-row" href={contact.href} target="_blank" rel="noreferrer noopener">
+                <a key={contact.key} className="link-row" data-brand={contact.key} href={contact.href} target="_blank" rel="noreferrer noopener">
                   <span className="link-row-icon">{contact.icon}</span>
                   <span className="link-row-copy"><strong>{contact.title}</strong><span>{contact.label}</span></span>
                   <ChevronRight size={16} className="link-row-arrow" />
@@ -214,26 +225,35 @@ export function ProfileDetails({
 
 
         <h3>Project portfolio</h3>
-        <button type="button" className="link-row link-row-action" onClick={() => setShowPortfolio((open) => !open)} aria-expanded={showPortfolio}>
+        <button type="button" className="link-row link-row-action" onClick={() => { setActiveProject(0); setActiveImage(0); setShowPortfolio(true); }} aria-haspopup="dialog">
           <span className="link-row-icon"><FolderOpen size={16} /></span>
-          <span className="link-row-copy"><strong>{showPortfolio ? "Hide projects" : "View projects"}</strong><span>{portfolio.length ? `${portfolio.length} project${portfolio.length > 1 ? "s" : ""} with images` : "No projects added yet"}</span></span>
-          <ChevronRight size={16} className="link-row-arrow" data-open={showPortfolio} />
+          <span className="link-row-copy"><strong>View projects</strong><span>{portfolio.length ? `${portfolio.length} case stud${portfolio.length > 1 ? "ies" : "y"}` : "No projects added yet"}</span></span>
+          <ChevronRight size={16} className="link-row-arrow" />
         </button>
-        {showPortfolio && (
-          portfolio.length ? (
-            <div className="portfolio-grid">
-              {portfolio.map((item) => (
-                <figure key={item.id}>
-                  <img src={item.image_url} alt={item.title} loading="lazy" />
-                  <figcaption>{item.title}</figcaption>
-                  {item.description && <p className="portfolio-note">{item.description}</p>}
-                </figure>
-              ))}
-            </div>
-          ) : (
-            <p>This freelancer has not uploaded any project images yet.</p>
-          )
-        )}
+        {showPortfolio && typeof document !== "undefined" && createPortal(
+          <div className="portfolio-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowPortfolio(false); }}>
+            <section className="portfolio-modal" role="dialog" aria-modal="true" aria-label={`${profile.full_name || profile.username} project portfolio`}>
+              <div className="portfolio-modal-head"><div><span className="eyebrow">Selected work</span><h2>{profile.full_name || profile.username}</h2></div><Button variant="ghost" size="icon" onClick={() => setShowPortfolio(false)} aria-label="Close portfolio"><X /></Button></div>
+              {portfolio.length ? (() => {
+                const item = portfolio[Math.min(activeProject, portfolio.length - 1)];
+                if (!item) return null;
+                const images = item.image_urls?.length ? item.image_urls : [item.image_url];
+                const image = images[Math.min(activeImage, images.length - 1)] ?? item.image_url;
+                return <div className="portfolio-viewer">
+                  <div className="portfolio-project-list" aria-label="Projects">{portfolio.map((project, index) => <button type="button" key={project.id} data-active={index === activeProject} onClick={() => { setActiveProject(index); setActiveImage(0); }}><span>{String(index + 1).padStart(2, "0")}</span><strong>{project.title}</strong></button>)}</div>
+                  <div className="portfolio-stage"><img src={image} alt={`${item.title} screenshot ${activeImage + 1}`} /></div>
+                  {images.length > 1 && <div className="portfolio-thumbs">{images.map((url, index) => <button type="button" key={`${url}-${index}`} data-active={index === activeImage} onClick={() => setActiveImage(index)} aria-label={`View screenshot ${index + 1}`}><img src={url} alt="" /></button>)}</div>}
+                  <article className="portfolio-story">
+                    <div className="portfolio-story-title"><div><span>{[item.category, item.completion_year].filter(Boolean).join(" · ") || "Project"}</span><h3>{item.title}</h3></div>{item.project_url && <a href={normalizeUrl(item.project_url)} target="_blank" rel="noreferrer noopener">Visit project <ExternalLink size={14} /></a>}</div>
+                    {item.client_name && <p className="portfolio-client">For {item.client_name}</p>}
+                    {item.description && <p>{item.description}</p>}
+                    {item.tools?.length > 0 && <div className="tag-list">{item.tools.map((tool) => <span className="tag" key={tool}>{tool}</span>)}</div>}
+                    {item.results && <div className="portfolio-result"><strong>Outcome</strong><p>{item.results}</p></div>}
+                  </article>
+                </div>;
+              })() : <div className="portfolio-empty"><FolderOpen /><h3>No projects yet</h3><p>This freelancer has not added a case study.</p></div>}
+            </section>
+          </div>, document.body)}
 
 
         <h3>Comments</h3>

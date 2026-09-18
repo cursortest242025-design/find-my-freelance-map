@@ -61,6 +61,10 @@ function Index() {
       const { data } = await supabase.from("profiles").select("*").eq("id", auth.user.id).maybeSingle();
       const mine = data as MapProfile | null;
       setMyProfile(mine);
+      if (!homeSet.current && mine?.latitude != null && mine.longitude != null) {
+        homeSet.current = true;
+        setViewTarget({ center: [mine.latitude, mine.longitude], zoom: 9.5, key: `my-city-${mine.id}` });
+      }
       // Right after signing up, take the freelancer straight to their profile setup.
       if (mine && !mine.is_listed && !promptedSetup.current) {
         promptedSetup.current = true;
@@ -78,24 +82,6 @@ function Index() {
     const { data } = supabase.auth.onAuthStateChange((event) => { if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") void loadProfiles(); });
     return () => { void supabase.removeChannel(channel); data.subscription.unsubscribe(); };
   }, [loadProfiles]);
-
-  // Open the map where the visitor actually is, e.g. Bangalore for someone in India.
-  useEffect(() => {
-    if (homeSet.current) return;
-    homeSet.current = true;
-    void (async () => {
-      try {
-        const response = await fetch("https://ipapi.co/json/");
-        if (!response.ok) return;
-        const data = (await response.json()) as { latitude?: number; longitude?: number };
-        if (typeof data.latitude === "number" && typeof data.longitude === "number") {
-          setViewTarget({ center: [data.latitude, data.longitude], zoom: 10, key: "home" });
-        }
-      } catch {
-        /* keep the world view */
-      }
-    })();
-  }, []);
 
   useEffect(() => {
     if (selected && !profiles.some((profile) => profile.id === selected.id)) setSelected(null);
