@@ -93,10 +93,14 @@ function Index() {
   );
 
   const visible = useMemo(() => profiles.filter((profile) => {
+    // While the owner is placing their own point, hide their saved pin so only the
+    // one they are moving is on the map.
+    if ((editing || picking) && myProfile && profile.id === myProfile.id) return false;
     if (country !== "all" && profile.country !== country) return false;
     const haystack = [profile.full_name, profile.username, profile.headline, profile.location_name, profile.country, ...profile.tags, ...profile.services].join(" ").toLowerCase();
     return haystack.includes(query.toLowerCase());
-  }), [profiles, query, country]);
+  }), [profiles, query, country, editing, picking, myProfile]);
+
 
   const favorites = useMemo(() => profiles.filter((profile) => favoriteIds.includes(profile.id)), [profiles, favoriteIds]);
 
