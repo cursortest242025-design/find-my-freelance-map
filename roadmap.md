@@ -18,11 +18,14 @@
 - Multiple work images per upload, optional project title
 - Country filled from the picked place; clicking a person flies the map to them
 
+- Google sign-in works locally with your own credentials (.env fields)
+- Sign-in return page at /auth/callback (no more 404)
+- Only one pin visible while editing your own location
+- Nearby people group into a counted bubble when zoomed out
+- Pins hidden when they are on the far side of the globe
+
 ## Open
-- Brand-colored contact icons
-- Structured portfolio case studies with multiple screenshots
-- Centered portfolio viewer
-- Rotating Earth startup for visitors
-- Saved-city startup for returning users
+- Nothing pending
+
 
 
