@@ -5,7 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { lovable } from "@/integrations/lovable";
+import { signInWithGoogle } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { MapProfile, ViewTarget } from "@/components/FreelancerMap";
 import { ProfileEditor } from "@/components/ProfileEditor";
@@ -133,9 +133,10 @@ function Index() {
   }
 
   async function signIn() {
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin, extraParams: { prompt: "select_account" } });
+    const result = await signInWithGoogle();
     if (result.error) toast.error(result.error.message);
   }
+
 
   async function signOut() {
     await supabase.auth.signOut();
