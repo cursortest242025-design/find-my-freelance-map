@@ -5,7 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { lovable } from "@/integrations/lovable";
+import { signInWithGoogle } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { MapProfile, ViewTarget } from "@/components/FreelancerMap";
 import { ProfileEditor } from "@/components/ProfileEditor";
@@ -93,10 +93,14 @@ function Index() {
   );
 
   const visible = useMemo(() => profiles.filter((profile) => {
+    // While the owner is placing their own point, hide their saved pin so only the
+    // one they are moving is on the map.
+    if ((editing || picking) && myProfile && profile.id === myProfile.id) return false;
     if (country !== "all" && profile.country !== country) return false;
     const haystack = [profile.full_name, profile.username, profile.headline, profile.location_name, profile.country, ...profile.tags, ...profile.services].join(" ").toLowerCase();
     return haystack.includes(query.toLowerCase());
-  }), [profiles, query, country]);
+  }), [profiles, query, country, editing, picking, myProfile]);
+
 
   const favorites = useMemo(() => profiles.filter((profile) => favoriteIds.includes(profile.id)), [profiles, favoriteIds]);
 
@@ -129,9 +133,10 @@ function Index() {
   }
 
   async function signIn() {
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin, extraParams: { prompt: "select_account" } });
+    const result = await signInWithGoogle();
     if (result.error) toast.error(result.error.message);
   }
+
 
   async function signOut() {
     await supabase.auth.signOut();

@@ -125,7 +125,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
       description: projectDescription.trim(),
       tools: projectTools.split(",").map((tool) => tool.trim()).filter(Boolean),
       results: projectResults.trim(),
-      image_url: imageUrls[0],
+      image_url: imageUrls[0] ?? "",
       image_urls: imageUrls,
       sort_order: Date.now(),
     });
