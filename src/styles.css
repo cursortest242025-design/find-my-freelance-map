@@ -223,6 +223,13 @@
   .pin3d-selected .pin3d-body, .pin3d-picked .pin3d-body { z-index: 500; box-shadow: 0 10px 24px oklch(0.18 0.04 255 / 38%), 0 0 0 4px color-mix(in oklch, var(--color-map-action) 28%, transparent); }
   .pin3d-selected .pin3d-tail, .pin3d-picked .pin3d-tail { border-top-color: var(--color-map-action); }
 
+  /* Grouped freelancers: one counted bubble instead of a pile of pins. */
+  .pin-cluster { position: relative; cursor: pointer; display: grid; place-items: center; }
+  .pin-cluster-bubble { display: grid; place-items: center; min-width: 38px; height: 38px; padding: 0 9px; border-radius: 999px; color: var(--color-primary-foreground); background: linear-gradient(160deg, color-mix(in oklch, var(--color-primary) 92%, white 8%), var(--color-primary)); border: 2px solid oklch(1 0 0 / 82%); box-shadow: 0 8px 20px oklch(0.18 0.04 255 / 34%); font-weight: 700; font-size: 13px; letter-spacing: .01em; transition: transform .18s ease; }
+  .pin-cluster:hover .pin-cluster-bubble { transform: scale(1.08); }
+  .pin-cluster-pulse { position: absolute; inset: -8px; border-radius: 999px; border: 2px solid color-mix(in oklch, var(--color-map-action) 45%, transparent); opacity: .55; pointer-events: none; }
+
+
   .map-popup { border: 0; background: transparent; text-align: left; cursor: pointer; min-width: 160px; } .map-popup strong, .map-popup span { display: block; } .map-popup span { color: var(--color-muted-foreground); margin-top: 3px; }
   .maplibregl-map { font-family: var(--font-sans); background: oklch(0.16 0.04 260); }
   .maplibregl-ctrl-attrib { font-size: 9px; }
