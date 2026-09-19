@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { MapMouseEvent, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -85,6 +85,48 @@ function buildPinElement(profile: MapProfile) {
   return element;
 }
 
+function buildClusterElement(count: number, label: string) {
+  const element = document.createElement("div");
+  element.className = "pin-cluster";
+  element.title = `${count} freelancers${label ? ` around ${label}` : ""} — zoom in to see them`;
+  element.innerHTML = `<span class="pin-cluster-bubble"><span class="pin-cluster-count">${count}</span></span><span class="pin-cluster-pulse"></span>`;
+  return element;
+}
+
+type Group = { key: string; lat: number; lng: number; members: MapProfile[] };
+
+// Group nearby people into one counted bubble while the view is wide, so a busy
+// region reads as "42 freelancers" instead of a pile of overlapping pins.
+function groupProfiles(profiles: MapProfile[], zoom: number): Group[] {
+  const placed = profiles.filter((profile) => profile.latitude != null && profile.longitude != null);
+  if (zoom >= 9) {
+    return placed.map((profile) => ({
+      key: profile.id,
+      lat: profile.latitude as number,
+      lng: profile.longitude as number,
+      members: [profile],
+    }));
+  }
+  const cell = Math.max(0.05, 40 / Math.pow(2, zoom));
+  const buckets = new Map<string, Group>();
+  for (const profile of placed) {
+    const lat = profile.latitude as number;
+    const lng = profile.longitude as number;
+    const key = `${Math.floor(lat / cell)}:${Math.floor(lng / cell)}`;
+    const bucket = buckets.get(key);
+    if (bucket) {
+      bucket.members.push(profile);
+      bucket.lat = (bucket.lat * (bucket.members.length - 1) + lat) / bucket.members.length;
+      bucket.lng = (bucket.lng * (bucket.members.length - 1) + lng) / bucket.members.length;
+    } else {
+      buckets.set(key, { key, lat, lng, members: [profile] });
+    }
+  }
+  return [...buckets.values()].map((group) =>
+    group.members.length === 1 && group.members[0] ? { ...group, key: group.members[0].id } : group,
+  );
+}
+
 export function FreelancerMap({
   profiles,
   selectedId,
@@ -109,8 +151,27 @@ export function FreelancerMap({
   const pickHandler = useRef(pickLocation);
   const selectHandler = useRef(onSelect);
   const spinningRef = useRef(true);
+  const [zoomBucket, setZoomBucket] = useState(1);
   pickHandler.current = pickLocation;
   selectHandler.current = onSelect;
+
+  // Hide anything sitting on the far side of the planet so pins never bleed
+  // through the globe from the back.
+  const applyOcclusion = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const transform = (map as unknown as { transform?: { isLocationOccluded?: (point: maplibregl.LngLat) => boolean } })
+      .transform;
+    const check = transform?.isLocationOccluded?.bind(transform);
+    const hideIfBehind = (marker: maplibregl.Marker) => {
+      const element = marker.getElement();
+      const hidden = check ? check(marker.getLngLat()) : false;
+      element.style.visibility = hidden ? "hidden" : "visible";
+      element.style.pointerEvents = hidden ? "none" : "";
+    };
+    for (const marker of markersRef.current.values()) hideIfBehind(marker);
+    if (pickedRef.current) hideIfBehind(pickedRef.current);
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -150,17 +211,18 @@ export function FreelancerMap({
 
     const applySizes = () => {
       const size = pinSize(map.getZoom());
-      for (const [id, marker] of markersRef.current) {
+      for (const marker of markersRef.current.values()) {
         const element = marker.getElement();
         const body = element.querySelector<HTMLElement>(".pin3d-body");
         const scaled = element.classList.contains("pin3d-selected") ? Math.round(size * 1.18) : size;
         if (body) body.style.setProperty("--pin-size", `${scaled}px`);
-        void id;
       }
     };
     map.on("zoom", applySizes);
-    // Level out to a straight-on globe view when the user pulls back out to world scale.
+    map.on("render", applyOcclusion);
     map.on("zoomend", () => {
+      setZoomBucket(Math.round(map.getZoom() * 2) / 2);
+      // Level out to a straight-on globe view when the user pulls back out to world scale.
       if (map.getZoom() < 5 && map.getPitch() > 1) map.easeTo({ pitch: 0, duration: 500 });
     });
     map.on("click", (event: MapMouseEvent) => pickHandler.current?.(event.lngLat.lat, event.lngLat.lng));
@@ -172,44 +234,61 @@ export function FreelancerMap({
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [applyOcclusion]);
 
-  // Sync markers with the visible freelancers.
+  // Sync markers (people and grouped bubbles) with the visible freelancers.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const markers = markersRef.current;
+    const groups = groupProfiles(profiles, zoomBucket);
     const seen = new Set<string>();
-    for (const profile of profiles) {
-      if (profile.latitude == null || profile.longitude == null) continue;
-      seen.add(profile.id);
-      let marker = markers.get(profile.id);
-      if (!marker) {
-        const element = buildPinElement(profile);
+    const size = pinSize(map.getZoom());
+    for (const group of groups) {
+      seen.add(group.key);
+      const single = group.members.length === 1 ? group.members[0] : null;
+      const existing = markers.get(group.key);
+      const isClusterMarker = existing?.getElement().classList.contains("pin-cluster");
+      if (existing && Boolean(single) === !isClusterMarker) {
+        existing.setLngLat([group.lng, group.lat]);
+      } else {
+        existing?.remove();
+        const element = single
+          ? buildPinElement(single)
+          : buildClusterElement(group.members.length, group.members[0]?.location_name ?? "");
         element.addEventListener("click", (event) => {
           event.stopPropagation();
-          selectHandler.current(profile);
+          if (single) {
+            selectHandler.current(single);
+            return;
+          }
+          map.flyTo({ center: [group.lng, group.lat], zoom: Math.max(map.getZoom() + 3, 6), essential: true });
         });
-        marker = new maplibregl.Marker({ element, anchor: "bottom", pitchAlignment: "viewport", rotationAlignment: "viewport" })
-          .setLngLat([profile.longitude, profile.latitude])
+        const marker = new maplibregl.Marker({
+          element,
+          anchor: single ? "bottom" : "center",
+          pitchAlignment: "viewport",
+          rotationAlignment: "viewport",
+        })
+          .setLngLat([group.lng, group.lat])
           .addTo(map);
-        markers.set(profile.id, marker);
-      } else {
-        marker.setLngLat([profile.longitude, profile.latitude]);
+        markers.set(group.key, marker);
       }
-      const element = marker.getElement();
-      element.classList.toggle("pin3d-selected", profile.id === selectedId);
-      element.classList.toggle("pin3d-available", profile.is_available);
-      const body = element.querySelector<HTMLElement>(".pin3d-body");
-      const size = pinSize(map.getZoom());
-      if (body) body.style.setProperty("--pin-size", `${profile.id === selectedId ? Math.round(size * 1.18) : size}px`);
+      if (single) {
+        const element = markers.get(group.key)!.getElement();
+        element.classList.toggle("pin3d-selected", single.id === selectedId);
+        element.classList.toggle("pin3d-available", single.is_available);
+        const body = element.querySelector<HTMLElement>(".pin3d-body");
+        if (body) body.style.setProperty("--pin-size", `${single.id === selectedId ? Math.round(size * 1.18) : size}px`);
+      }
     }
-    for (const [id, marker] of markers) {
-      if (seen.has(id)) continue;
+    for (const [key, marker] of markers) {
+      if (seen.has(key)) continue;
       marker.remove();
-      markers.delete(id);
+      markers.delete(key);
     }
-  }, [profiles, selectedId]);
+    applyOcclusion();
+  }, [profiles, selectedId, zoomBucket, applyOcclusion]);
 
   // Marker for the point being chosen while setting up a profile.
   useEffect(() => {
