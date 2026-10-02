@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { MapMouseEvent, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import spaceImage from "@/assets/atlaswork-space.jpg";
+import spaceImage from "@/assets/atlaswork-space-refined.jpg";
 
 export type MapProfile = {
   id: string;
@@ -166,6 +166,7 @@ export function FreelancerMap({
   viewTarget?: ViewTarget | undefined;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const skyRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef(new Map<string, maplibregl.Marker>());
   const pickedRef = useRef<maplibregl.Marker | null>(null);
@@ -217,6 +218,23 @@ export function FreelancerMap({
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), "bottom-right");
     map.touchZoomRotate.enableRotation();
 
+    // Keep the stars coupled to the globe camera. The bounded spherical offset
+    // avoids seams and ensures the sky never drifts or animates on its own.
+    const syncSpaceBackdrop = () => {
+      const sky = skyRef.current;
+      if (!sky) return;
+      const center = map.getCenter();
+      const longitude = (center.lng * Math.PI) / 180;
+      const bearing = (map.getBearing() * Math.PI) / 180;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      const x = Math.sin(longitude + bearing) * width * 0.045;
+      const latitudeOffset = Math.max(-1, Math.min(1, (center.lat - 20) / 90));
+      const y = (latitudeOffset * 0.035 + Math.cos(longitude) * 0.012) * height;
+      sky.style.setProperty("--space-x", `${x.toFixed(2)}px`);
+      sky.style.setProperty("--space-y", `${y.toFixed(2)}px`);
+    };
+
     const stopSpinning = () => { spinningRef.current = false; };
     map.on("mousedown", stopSpinning);
     map.on("touchstart", stopSpinning);
@@ -248,13 +266,17 @@ export function FreelancerMap({
     };
     map.on("zoom", applySizes);
     map.on("render", applyOcclusion);
+    map.on("render", syncSpaceBackdrop);
     map.on("zoomend", () => {
       setZoomBucket(Math.round(map.getZoom() * 2) / 2);
       // Level out to a straight-on globe view when the user pulls back out to world scale.
       if (map.getZoom() < 5 && map.getPitch() > 1) map.easeTo({ pitch: 0, duration: 500 });
     });
     map.on("click", (event: MapMouseEvent) => pickHandler.current?.(event.lngLat.lat, event.lngLat.lng));
-    map.once("load", applySizes);
+    map.once("load", () => {
+      applySizes();
+      syncSpaceBackdrop();
+    });
 
     return () => {
       cancelAnimationFrame(frame);
@@ -304,7 +326,9 @@ export function FreelancerMap({
         markers.set(group.key, marker);
       }
       if (single) {
-        const element = markers.get(group.key)!.getElement();
+        const marker = markers.get(group.key);
+        if (!marker) continue;
+        const element = marker.getElement();
         element.classList.toggle("pin3d-selected", single.id === selectedId);
         element.classList.toggle("pin3d-available", single.is_available);
         const body = element.querySelector<HTMLElement>(".pin3d-body");
@@ -365,7 +389,7 @@ export function FreelancerMap({
 
   return (
     <div className="atlas-space h-full w-full">
-      <div className="atlas-space-sky" style={{ backgroundImage: `url(${spaceImage})` }} aria-hidden="true" />
+      <div ref={skyRef} className="atlas-space-sky" style={{ backgroundImage: `url(${spaceImage})` }} aria-hidden="true" />
       <div ref={containerRef} className="atlas-map h-full w-full" />
     </div>
   );
