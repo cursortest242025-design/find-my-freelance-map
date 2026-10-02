@@ -257,6 +257,7 @@ export function FreelancerMap({
     map.once("load", applySizes);
 
     return () => {
+      cancelAnimationFrame(frame);
       markersRef.current.clear();
       pickedRef.current = null;
       map.remove();
