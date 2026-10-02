@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { MapMouseEvent, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import spaceImage from "@/assets/atlaswork-space.jpg";
 
 export type MapProfile = {
   id: string;
@@ -45,15 +46,25 @@ const globeStyle: StyleSpecification = {
   projection: { type: "globe" },
   light: { anchor: "map", position: [1.2, 200, 40], intensity: 0.2 },
   sky: {
-    "sky-color": "#5b8dd6",
-    "sky-horizon-blend": 0.55,
-    "horizon-color": "#d9e7f5",
-    "horizon-fog-blend": 0.2,
-    "fog-color": "#cfe1f2",
-    "fog-ground-blend": 0.85,
-    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 0.75, 5, 0.4, 8, 0],
+    "sky-color": "#0a1530",
+    "sky-horizon-blend": 0.6,
+    "horizon-color": "#7fb4ff",
+    "horizon-fog-blend": 0.3,
+    "fog-color": "#9cc4f0",
+    "fog-ground-blend": 0.9,
+    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 0.5, 8, 0],
   },
   sources: {
+    // NASA Blue Marble satellite mosaic (public domain) for the planet-scale view.
+    earth: {
+      type: "raster",
+      tiles: [
+        "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
+      ],
+      tileSize: 256,
+      maxzoom: 8,
+      attribution: 'Imagery &copy; <a href="https://earthdata.nasa.gov">NASA Blue Marble</a>',
+    },
     osm: {
       type: "raster",
       tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
@@ -63,8 +74,18 @@ const globeStyle: StyleSpecification = {
     },
   },
   layers: [
-    { id: "space", type: "background", paint: { "background-color": "#0b1224" } },
-    { id: "osm", type: "raster", source: "osm", paint: { "raster-resampling": "linear", "raster-fade-duration": 120 } },
+    { id: "earth", type: "raster", source: "earth", paint: { "raster-resampling": "linear", "raster-fade-duration": 120 } },
+    {
+      id: "osm",
+      type: "raster",
+      source: "osm",
+      minzoom: 4.5,
+      paint: {
+        "raster-resampling": "linear",
+        "raster-fade-duration": 120,
+        "raster-opacity": ["interpolate", ["linear"], ["zoom"], 4.5, 0, 7, 1],
+      },
+    },
   ],
 };
 
@@ -200,14 +221,21 @@ export function FreelancerMap({
     map.on("mousedown", stopSpinning);
     map.on("touchstart", stopSpinning);
     map.on("wheel", stopSpinning);
-    const rotate = () => {
-      if (!spinningRef.current || map.getZoom() > 2.5) return;
-      const center = map.getCenter();
-      center.lng -= 0.035;
-      map.easeTo({ center, duration: 1000, easing: (value) => value });
+    // Frame-rate independent idle spin (degrees per second), paused on interaction / reduced motion.
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let frame = 0;
+    let last = 0;
+    const spin = (time: number) => {
+      const dt = last ? Math.min((time - last) / 1000, 0.05) : 0;
+      last = time;
+      if (spinningRef.current && !reduced && map.getZoom() <= 2.5 && !map.isMoving()) {
+        const center = map.getCenter();
+        center.lng -= 4 * dt;
+        map.jumpTo({ center });
+      }
+      frame = requestAnimationFrame(spin);
     };
-    map.on("moveend", rotate);
-    map.once("load", rotate);
+    map.once("load", () => { frame = requestAnimationFrame(spin); });
 
     const applySizes = () => {
       const size = pinSize(map.getZoom());
@@ -229,6 +257,7 @@ export function FreelancerMap({
     map.once("load", applySizes);
 
     return () => {
+      cancelAnimationFrame(frame);
       markersRef.current.clear();
       pickedRef.current = null;
       map.remove();
@@ -334,5 +363,10 @@ export function FreelancerMap({
     map.easeTo({ center: [focusPoint[1], focusPoint[0]], zoom: Math.max(map.getZoom(), 12), duration: 900 });
   }, [focusPoint]);
 
-  return <div ref={containerRef} className="atlas-map h-full w-full" />;
+  return (
+    <div className="atlas-space h-full w-full">
+      <div className="atlas-space-sky" style={{ backgroundImage: `url(${spaceImage})` }} aria-hidden="true" />
+      <div ref={containerRef} className="atlas-map h-full w-full" />
+    </div>
+  );
 }
