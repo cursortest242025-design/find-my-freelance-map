@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { MapMouseEvent, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import spaceImage from "@/assets/atlaswork-space-refined.jpg";
+import spaceImage from "@/assets/atlaswork-space-skybox.jpg";
 
 export type MapProfile = {
   id: string;
