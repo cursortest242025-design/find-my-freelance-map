@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { MapMouseEvent, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import spaceImage from "@/assets/atlaswork-space-refined.jpg";
+import spaceImage from "@/assets/atlaswork-space-skybox.jpg";
 
 export type MapProfile = {
   id: string;
@@ -44,15 +44,15 @@ function escapeHtml(value: string) {
 const globeStyle: StyleSpecification = {
   version: 8,
   projection: { type: "globe" },
-  light: { anchor: "map", position: [1.2, 200, 40], intensity: 0.2 },
+  light: { anchor: "map", position: [1.2, 200, 40], intensity: 0 },
   sky: {
-    "sky-color": "#0a1530",
-    "sky-horizon-blend": 0.6,
-    "horizon-color": "#7fb4ff",
-    "horizon-fog-blend": 0.3,
-    "fog-color": "#9cc4f0",
-    "fog-ground-blend": 0.9,
-    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 0.5, 8, 0],
+    "sky-color": "rgba(0, 0, 0, 0)",
+    "sky-horizon-blend": 0,
+    "horizon-color": "rgba(0, 0, 0, 0)",
+    "horizon-fog-blend": 0,
+    "fog-color": "rgba(0, 0, 0, 0)",
+    "fog-ground-blend": 0,
+    "atmosphere-blend": 0,
   },
   sources: {
     // NASA Blue Marble satellite mosaic (public domain) for the planet-scale view.
@@ -218,19 +218,25 @@ export function FreelancerMap({
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), "bottom-right");
     map.touchZoomRotate.enableRotation();
 
-    // Keep the stars coupled to the globe camera. The bounded spherical offset
-    // avoids seams and ensures the sky never drifts or animates on its own.
+    // Treat the panorama as a simple skybox: its horizontal position follows
+    // globe longitude and bearing, with no independent timer or animation.
+    let previousSkyAngle = map.getCenter().lng + map.getBearing();
+    let unwrappedSkyAngle = previousSkyAngle;
     const syncSpaceBackdrop = () => {
       const sky = skyRef.current;
       if (!sky) return;
       const center = map.getCenter();
-      const longitude = (center.lng * Math.PI) / 180;
-      const bearing = (map.getBearing() * Math.PI) / 180;
+      const angle = center.lng + map.getBearing();
+      let angleDelta = angle - previousSkyAngle;
+      if (angleDelta > 180) angleDelta -= 360;
+      if (angleDelta < -180) angleDelta += 360;
+      unwrappedSkyAngle += angleDelta;
+      previousSkyAngle = angle;
       const width = container.clientWidth;
       const height = container.clientHeight;
-      const x = Math.sin(longitude + bearing) * width * 0.045;
+      const x = -(unwrappedSkyAngle / 360) * Math.max(width * 1.9, height * 2.1);
       const latitudeOffset = Math.max(-1, Math.min(1, (center.lat - 20) / 90));
-      const y = (latitudeOffset * 0.035 + Math.cos(longitude) * 0.012) * height;
+      const y = latitudeOffset * height * 0.035;
       sky.style.setProperty("--space-x", `${x.toFixed(2)}px`);
       sky.style.setProperty("--space-y", `${y.toFixed(2)}px`);
     };
