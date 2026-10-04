@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { MapMouseEvent, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import spaceImage from "@/assets/atlaswork-space-skybox.jpg";
+import spaceAsset from "@/assets/atlaswork-milky-way-eso.asset.json";
+
+const spaceImage = spaceAsset.url;
 
 export type MapProfile = {
   id: string;
@@ -64,7 +66,7 @@ const globeStyle: StyleSpecification = {
       ],
       tileSize: 256,
       maxzoom: 13,
-      attribution: 'Sentinel-2 cloudless &copy; <a href="https://s2maps.eu">EOX</a>, contains modified Copernicus Sentinel data',
+      attribution: 'Sentinel-2 cloudless &copy; <a href="https://s2maps.eu">EOX</a>, contains modified Copernicus Sentinel data &middot; Sky: <a href="https://www.eso.org/public/images/eso0932a/">ESO/S. Brunier</a>',
     },
     osm: {
       type: "raster",
