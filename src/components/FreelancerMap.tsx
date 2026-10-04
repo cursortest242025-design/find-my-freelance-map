@@ -55,15 +55,16 @@ const globeStyle: StyleSpecification = {
     "atmosphere-blend": 0,
   },
   sources: {
-    // NASA Blue Marble satellite mosaic (public domain) for the planet-scale view.
+    // A cloud-reduced Sentinel-2 mosaic keeps the entire visible planet in a
+    // consistent daylight treatment instead of baking in a dark hemisphere.
     earth: {
       type: "raster",
       tiles: [
-        "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
+        "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg",
       ],
       tileSize: 256,
-      maxzoom: 8,
-      attribution: 'Imagery &copy; <a href="https://earthdata.nasa.gov">NASA Blue Marble</a>',
+      maxzoom: 13,
+      attribution: 'Sentinel-2 cloudless &copy; <a href="https://s2maps.eu">EOX</a>, contains modified Copernicus Sentinel data',
     },
     osm: {
       type: "raster",
@@ -74,7 +75,19 @@ const globeStyle: StyleSpecification = {
     },
   },
   layers: [
-    { id: "earth", type: "raster", source: "earth", paint: { "raster-resampling": "linear", "raster-fade-duration": 120 } },
+    {
+      id: "earth",
+      type: "raster",
+      source: "earth",
+      paint: {
+        "raster-resampling": "linear",
+        "raster-fade-duration": 120,
+        "raster-brightness-min": 0.12,
+        "raster-brightness-max": 1,
+        "raster-contrast": -0.08,
+        "raster-saturation": 0.08,
+      },
+    },
     {
       id: "osm",
       type: "raster",
@@ -218,25 +231,30 @@ export function FreelancerMap({
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), "bottom-right");
     map.touchZoomRotate.enableRotation();
 
-    // Treat the panorama as a simple skybox: its horizontal position follows
-    // globe longitude and bearing, with no independent timer or animation.
-    let previousSkyAngle = map.getCenter().lng + map.getBearing();
-    let unwrappedSkyAngle = previousSkyAngle;
+    // Sample the panorama like a celestial sphere at infinity. Camera yaw and
+    // elevation move the sky in opposite directions, while zoom/position add
+    // no parallax and there is no independent background animation.
+    const initialCenter = map.getCenter();
+    let previousSkyYaw = initialCenter.lng + map.getBearing();
+    let unwrappedSkyYaw = previousSkyYaw;
+    const initialSkyElevation = initialCenter.lat - map.getPitch();
     const syncSpaceBackdrop = () => {
       const sky = skyRef.current;
       if (!sky) return;
       const center = map.getCenter();
-      const angle = center.lng + map.getBearing();
-      let angleDelta = angle - previousSkyAngle;
-      if (angleDelta > 180) angleDelta -= 360;
-      if (angleDelta < -180) angleDelta += 360;
-      unwrappedSkyAngle += angleDelta;
-      previousSkyAngle = angle;
+      const yaw = center.lng + map.getBearing();
+      let yawDelta = yaw - previousSkyYaw;
+      if (yawDelta > 180) yawDelta -= 360;
+      if (yawDelta < -180) yawDelta += 360;
+      unwrappedSkyYaw += yawDelta;
+      previousSkyYaw = yaw;
       const width = container.clientWidth;
       const height = container.clientHeight;
-      const x = -(unwrappedSkyAngle / 360) * Math.max(width * 1.9, height * 2.1);
-      const latitudeOffset = Math.max(-1, Math.min(1, (center.lat - 20) / 90));
-      const y = latitudeOffset * height * 0.035;
+      const panoramaWidth = Math.max(width * 2.4, height * 3.58 * 1.45);
+      const x = -(unwrappedSkyYaw / 360) * panoramaWidth;
+      const elevation = center.lat - map.getPitch();
+      const elevationDelta = Math.max(-90, Math.min(90, elevation - initialSkyElevation));
+      const y = -(elevationDelta / 180) * height * 1.45;
       sky.style.setProperty("--space-x", `${x.toFixed(2)}px`);
       sky.style.setProperty("--space-y", `${y.toFixed(2)}px`);
     };
