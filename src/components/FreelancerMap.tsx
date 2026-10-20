@@ -116,9 +116,24 @@ function buildPinElement(profile: MapProfile) {
     ? `<img class="pin3d-photo" src="${escapeHtml(profile.avatar_url)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.style.display='none'" />`
     : "";
   element.className = "pin3d";
+  element.dataset.avatarUrl = profile.avatar_url ?? "";
   element.title = `Open ${profile.full_name || profile.username}'s profile`;
   element.innerHTML = `<span class="pin3d-body"><span class="pin3d-face">${fallback}${photo}</span><span class="pin3d-status"></span></span><span class="pin3d-tail"></span><span class="pin3d-shadow"></span>`;
   return element;
+}
+
+function refreshPinPhoto(element: HTMLElement, profile: MapProfile) {
+  const avatarUrl = profile.avatar_url ?? "";
+  if (element.dataset.avatarUrl === avatarUrl) return;
+  const face = element.querySelector<HTMLElement>(".pin3d-face");
+  if (!face) return;
+  const initial = escapeHtml((profile.full_name || profile.username || "?").slice(0, 1).toUpperCase());
+  const fallback = `<span class="pin3d-person" aria-hidden="true"><span class="pin3d-head"></span><span class="pin3d-shoulders"></span><span class="pin3d-initial">${initial}</span></span>`;
+  const photo = avatarUrl
+    ? `<img class="pin3d-photo" src="${escapeHtml(avatarUrl)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.style.display='none'" />`
+    : "";
+  face.innerHTML = `${fallback}${photo}`;
+  element.dataset.avatarUrl = avatarUrl;
 }
 
 function buildClusterElement(count: number, label: string) {
@@ -355,6 +370,7 @@ export function FreelancerMap({
         const marker = markers.get(group.key);
         if (!marker) continue;
         const element = marker.getElement();
+        refreshPinPhoto(element, single);
         element.classList.toggle("pin3d-selected", single.id === selectedId);
         element.classList.toggle("pin3d-available", single.is_available);
         const body = element.querySelector<HTMLElement>(".pin3d-body");

@@ -145,13 +145,18 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
     const priceText = String(form.get("price") ?? "").trim();
     const isListed = form.get("listed") === "on";
     const githubRepos = String(form.get("githubRepos") ?? "").split(/[\s,]+/).map((item) => item.trim()).filter(Boolean);
+    const username = String(form.get("username") ?? "").trim();
+    if (username.length < 2 || username.length > 40) {
+      toast.error("Your username must be between 2 and 40 characters.");
+      return;
+    }
     if (isListed && (latitude == null || longitude == null)) {
       toast.error("Set your location before going live.");
       return;
     }
     setSaving(true);
     const { error } = await supabase.from("profiles").update({
-      username: String(form.get("username") ?? "").trim(),
+      username,
       full_name: String(form.get("fullName") ?? "").trim(),
       headline: String(form.get("headline") ?? "").trim(),
       bio: String(form.get("bio") ?? "").trim(),
@@ -177,7 +182,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
     }).eq("id", profile.id);
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(error.code === "23505" ? "That username is already taken. Choose another one." : error.message);
       return;
     }
     toast.success("Your freelancer profile is live.");
@@ -200,7 +205,7 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
         <div className="field-grid"><div><Label htmlFor="fullName">Name</Label><Input id="fullName" name="fullName" defaultValue={profile.full_name} required /></div><div><Label htmlFor="username">Username</Label><Input id="username" name="username" defaultValue={profile.username} required /></div></div>
         <div><Label htmlFor="headline">Professional headline</Label><Input id="headline" name="headline" defaultValue={profile.headline} placeholder="Brand designer & creative director" /></div>
         <div><Label htmlFor="bio">About your work</Label><Textarea id="bio" name="bio" defaultValue={profile.bio} placeholder="Tell clients what you do best..." rows={4} /></div>
-        <div><Label htmlFor="services">Services</Label><Input id="services" name="services" defaultValue={profile.services.join(", ")} placeholder="Brand identity, Web design, Art direction" /><p className="field-help">Separate services with commas.</p></div>
+        <div><Label htmlFor="offerings">What I offer</Label><Input id="offerings" name="services" defaultValue={profile.services.join(", ")} placeholder="Brand identity, Web design, Art direction" /><p className="field-help">Separate each offering with a comma.</p></div>
         <div><Label htmlFor="tags">Skills & tools</Label><Input id="tags" name="tags" defaultValue={profile.tags.join(", ")} placeholder="Figma, Illustration, Framer" /></div>
         <div className="field-grid"><div><Label htmlFor="price">Starting price</Label><Input id="price" name="price" type="number" min="0" step="1" defaultValue={profile.starting_price ?? ""} placeholder="Optional" /></div><div><Label htmlFor="currency">Currency</Label><Input id="currency" name="currency" maxLength={3} defaultValue={profile.currency} /></div></div>
         <div className="location-block">
@@ -227,7 +232,6 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
         <div className="toggle-row"><div><Label htmlFor="showAddress">Show my address publicly</Label><p>Keep it off to share only your city and map point.</p></div><Switch id="showAddress" name="showAddress" defaultChecked={profile.show_address} /></div>
         <div className="privacy-note"><MapPin /><p>Your exact map point will be visible publicly when your profile is listed.</p></div>
         <div className="toggle-row"><div><Label htmlFor="available">Available for work</Label><p>Show clients you can take new projects.</p></div><Switch id="available" name="available" defaultChecked={profile.is_available} /></div>
-        <div className="toggle-row"><div><Label htmlFor="listed">List me on the map</Label><p>Make your profile discoverable to everyone.</p></div><Switch id="listed" name="listed" defaultChecked={profile.is_listed} /></div>
         <div className="portfolio-builder">
           <div className="section-split"><span className="eyebrow">Past work</span><p className="field-help">Build one clear case study at a time.</p></div>
           <div><Label htmlFor="projectTitle">Project title</Label><Input id="projectTitle" value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="Mobile banking redesign" /></div>
@@ -243,6 +247,10 @@ export function ProfileEditor({ profile, onClose, onSaved, onPickOnMap, onLocati
           <div className="portfolio-upload"><div><Label htmlFor="projectImage">Project screenshots</Label><Input id="projectImage" type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ""; if (files.length) void uploadProjects(files); }} /><p className="field-help">{uploading ? "Uploading project..." : "Select every screenshot for this project together."}</p></div></div>
         </div>
         <Button type="submit" size="lg" disabled={saving || uploading}><Check />{saving ? "Saving..." : "Save profile"}</Button>
+        <div className="listing-prompt">
+          <div><Label htmlFor="listed">List me on the map</Label><p>Turn this on to make your profile discoverable.</p></div>
+          <Switch id="listed" name="listed" defaultChecked={profile.is_listed} />
+        </div>
       </form>
     </aside>
   );
