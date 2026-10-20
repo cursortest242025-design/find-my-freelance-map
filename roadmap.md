@@ -29,3 +29,9 @@
 
 
 
+
+## Open
+- Finish profile polish: enforce unique usernames, rename the “Services” label, refresh saved avatar in the map pin, and emphasize “List me on the map” below Save.
+- Verify the locally stored ESO Milky Way panorama loads and remains camera-coupled.
+- Review DailyResume.in for the planned Atlaswork integration.
+- Deliver a standalone Copilot-ready specification for organization and professional map categories with distinct pin shapes/colors.
