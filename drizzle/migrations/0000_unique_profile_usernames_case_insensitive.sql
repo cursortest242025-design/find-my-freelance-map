@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX profiles_username_lower_trim_unique_idx ON public.profiles (lower(btrim(username)));
